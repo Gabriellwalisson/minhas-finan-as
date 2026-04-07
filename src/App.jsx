@@ -12,7 +12,7 @@ import {
 
 // Importações do Firebase para Nuvem (Sincronização entre dispositivos)
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+import { getAuth, signInWithCustomToken, signInAnonymously } from 'firebase/auth';
 import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, deleteDoc } from 'firebase/firestore';
 
 // ----------------------------------------------------------------------
@@ -97,25 +97,8 @@ const dailyTips = [
   "Dica do Dia: O melhor dia para começar a investir foi ontem. O segundo melhor é hoje."
 ];
 
-const getStoredUsers = () => {
-  const stored = localStorage.getItem('finances_users');
-  if (stored) {
-    let users = JSON.parse(stored);
-    if (!users.find(u => u.email.toLowerCase() === 'gabriell')) {
-      const defaultUser = { id: 'admin_gabriell', email: 'gabriell', password: 'f8g4j10', name: 'Gabriell' };
-      users.push(defaultUser);
-      localStorage.setItem('finances_users', JSON.stringify(users));
-    }
-    return users;
-  }
-  const defaultUser = { id: 'admin_gabriell', email: 'gabriell', password: 'f8g4j10', name: 'Gabriell' };
-  localStorage.setItem('finances_users', JSON.stringify([defaultUser]));
-  return [defaultUser];
-};
-
 export default function App() {
-  // Autenticação Firebase (Backend)
-  const [firebaseUser, setFirebaseUser] = useState(null);
+  const [firebaseReady, setFirebaseReady] = useState(false);
   const [firebasePermissionError, setFirebasePermissionError] = useState(false);
 
   // Utilizador da Aplicação (App User)
@@ -180,11 +163,9 @@ export default function App() {
   const [aiGoalPlan, setAiGoalPlan] = useState('');
   const [selectedGoalForPlan, setSelectedGoalForPlan] = useState(null);
 
-  // --- NEW STATE FOR AI BUDGET ---
   const [showAiBudgetModal, setShowAiBudgetModal] = useState(false);
   const [isGeneratingBudget, setIsGeneratingBudget] = useState(false);
   const [aiBudgetPlan, setAiBudgetPlan] = useState('');
-  // -------------------------------
 
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [purchaseItemName, setPurchaseItemName] = useState('');
@@ -227,36 +208,30 @@ export default function App() {
   }, [isDarkMode]);
 
   // ----------------------------------------------------------------------
-  // INICIALIZAÇÃO FIREBASE AUTH
+  // INICIALIZAÇÃO FIREBASE (Preparar Conexão)
   // ----------------------------------------------------------------------
   useEffect(() => {
-    let isFallback = false;
     const initAuth = async () => {
       try {
-        await signInAnonymously(auth);
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          await signInAnonymously(auth);
+        }
       } catch (err) {
-        console.warn("Aviso: O Firebase bloqueou o login anónimo. Ativando fallback local.");
-        isFallback = true;
-        setFirebaseUser({ uid: 'anonymous_fallback_user' });
+        console.warn("Aviso: Auth nativa falhou. Prosseguindo ligação via Regras de Segurança Públicas.");
+      } finally {
+        setFirebaseReady(true);
       }
     };
     initAuth();
-    
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setFirebaseUser(user);
-      } else if (isFallback) {
-        setFirebaseUser({ uid: 'anonymous_fallback_user' });
-      }
-    });
-    return () => unsubscribe();
   }, []);
 
   // ----------------------------------------------------------------------
-  // CARREGAMENTO DE DADOS (LOCAL FALLBACK + CLOUD SYNC)
+  // CARREGAMENTO DE DADOS (CLOUD SYNC ESTRICTO)
   // ----------------------------------------------------------------------
   useEffect(() => {
-    if (!currentUser) {
+    if (!firebaseReady || !currentUser) {
       setIsDataLoaded(false);
       return;
     }
@@ -264,44 +239,15 @@ export default function App() {
     const userId = currentUser.id;
     const isDemoUser = currentUser.email.toLowerCase() === 'gabriell';
 
-    // 1. Carregamento Imediato Local (Offline First)
+    // 1. Tentar ler do localStorage para que o ecrã não fique em branco enquanto sincroniza
     const localTxns = localStorage.getItem(`finances_data_user_${userId}`);
-    if (localTxns) {
-      setTransactions(JSON.parse(localTxns));
-    } else if (isDemoUser) {
-      const initialData = [];
-      const baseDate = new Date();
-      let currentMonthIter = new Date(baseDate.getFullYear(), baseDate.getMonth(), 1);
-      const limitSalario = new Date(2027, 11, 11); 
-      const limitAcerto = new Date(2027, 1, 2);  
-
-      while (currentMonthIter <= limitSalario) {
-        let year = currentMonthIter.getFullYear();
-        let month = String(currentMonthIter.getMonth() + 1).padStart(2, '0');
-        let dateSalario = `${year}-${month}-11`;
-        let dateAcerto = `${year}-${month}-02`;
-
-        initialData.push({ id: generateSafeId(), description: 'Salário', amount: 4500, type: 'income', date: dateSalario, category: 'Salário', status: 'paid' });
-        
-        let acertoDateObj = new Date(year, currentMonthIter.getMonth(), 2);
-        if (acertoDateObj <= limitAcerto) {
-          initialData.push({ id: generateSafeId(), description: 'Acerto', amount: 900, type: 'income', date: dateAcerto, category: 'Acerto', status: 'paid' });
-        }
-        currentMonthIter.setMonth(currentMonthIter.getMonth() + 1);
-      }
-      setTransactions(initialData);
-      localStorage.setItem(`finances_data_user_${userId}`, JSON.stringify(initialData));
-    }
-
+    if (localTxns) setTransactions(JSON.parse(localTxns));
     const localGoals = localStorage.getItem(`finances_goals_${userId}`);
     if (localGoals) setGoals(JSON.parse(localGoals));
-
     const localBudgets = localStorage.getItem(`finances_budgets_${userId}`);
     if (localBudgets) setBudgets(JSON.parse(localBudgets));
-
     const localCats = localStorage.getItem(`finances_categories_${userId}`);
     if (localCats) setCategories(JSON.parse(localCats));
-
     const localCards = localStorage.getItem(`finances_cards_${userId}`);
     if (localCards) setCards(JSON.parse(localCards));
 
@@ -312,9 +258,7 @@ export default function App() {
 
     setIsDataLoaded(true);
 
-    // 2. Sincronização em Nuvem (se disponível)
-    if (!firebaseUser || firebaseUser.uid === 'anonymous_fallback_user') return;
-
+    // 2. Sincronização Estrita da Nuvem (Firestore)
     let unsubTxns;
     let unsubConfig;
 
@@ -322,8 +266,37 @@ export default function App() {
       unsubTxns = onSnapshot(
         collection(db, 'artifacts', appId, 'public', 'data', `txns_${userId}`), 
         (snapshot) => {
-          if (!snapshot.empty) {
-            const loadedTxns = snapshot.docs.map(doc => doc.data());
+          const loadedTxns = snapshot.docs.map(doc => doc.data());
+          
+          if (loadedTxns.length === 0 && isDemoUser) {
+            const initialData = [];
+            const baseDate = new Date();
+            let currentMonthIter = new Date(baseDate.getFullYear(), baseDate.getMonth(), 1);
+            const limitSalario = new Date(2027, 11, 11); 
+            const limitAcerto = new Date(2027, 1, 2);  
+
+            while (currentMonthIter <= limitSalario) {
+              let year = currentMonthIter.getFullYear();
+              let month = String(currentMonthIter.getMonth() + 1).padStart(2, '0');
+              let dateSalario = `${year}-${month}-11`;
+              let dateAcerto = `${year}-${month}-02`;
+
+              initialData.push({ id: generateSafeId(), description: 'Salário', amount: 4500, type: 'income', date: dateSalario, category: 'Salário', status: 'paid' });
+              
+              let acertoDateObj = new Date(year, currentMonthIter.getMonth(), 2);
+              if (acertoDateObj <= limitAcerto) {
+                initialData.push({ id: generateSafeId(), description: 'Acerto', amount: 900, type: 'income', date: dateAcerto, category: 'Acerto', status: 'paid' });
+              }
+              currentMonthIter.setMonth(currentMonthIter.getMonth() + 1);
+            }
+            
+            initialData.forEach(t => {
+              setDoc(doc(db, 'artifacts', appId, 'public', 'data', `txns_${userId}`, t.id), t).catch(err => {
+                if (err.code === 'permission-denied' || err.message?.toLowerCase().includes('permission')) setFirebasePermissionError(true);
+              });
+            });
+            setTransactions(initialData);
+          } else {
             setTransactions(loadedTxns);
             localStorage.setItem(`finances_data_user_${userId}`, JSON.stringify(loadedTxns));
           }
@@ -344,6 +317,11 @@ export default function App() {
             if (data.goals) { setGoals(data.goals); localStorage.setItem(`finances_goals_${userId}`, JSON.stringify(data.goals)); }
             if (data.budgets) { setBudgets(data.budgets); localStorage.setItem(`finances_budgets_${userId}`, JSON.stringify(data.budgets)); }
             if (data.userSettings) setUserSettings(data.userSettings);
+          } else if (!localCats) {
+            setCategories(defaultCategories);
+            setCards(defaultCards);
+            setGoals([]);
+            setBudgets({});
           }
         },
         (err) => {
@@ -352,28 +330,17 @@ export default function App() {
         }
       );
     } catch(err) {
-       console.error("Erro ao iniciar onSnapshot:", err);
+       console.error("Erro ao iniciar sincronização:", err);
     }
 
     return () => {
       if (unsubTxns) unsubTxns();
       if (unsubConfig) unsubConfig();
     };
-  }, [firebaseUser, currentUser]);
-
-  // Persistência local contínua (assegura que nada se perde caso a nuvem falhe)
-  useEffect(() => {
-    if (currentUser && isDataLoaded) {
-      localStorage.setItem(`finances_data_user_${currentUser.id}`, JSON.stringify(transactions));
-      localStorage.setItem(`finances_goals_${currentUser.id}`, JSON.stringify(goals));
-      localStorage.setItem(`finances_budgets_${currentUser.id}`, JSON.stringify(budgets));
-      localStorage.setItem(`finances_categories_${currentUser.id}`, JSON.stringify(categories));
-      localStorage.setItem(`finances_cards_${currentUser.id}`, JSON.stringify(cards));
-    }
-  }, [transactions, goals, budgets, categories, cards, currentUser, isDataLoaded]);
+  }, [firebaseReady, currentUser]);
 
   const saveCloudConfig = async (newConfigObject) => {
-    if (!firebaseUser || !currentUser || firebaseUser.uid === 'anonymous_fallback_user') return;
+    if (!firebaseReady || !currentUser) return;
     try {
       const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', currentUser.id);
       await setDoc(configRef, newConfigObject, { merge: true });
@@ -560,102 +527,61 @@ export default function App() {
   };
 
   // ----------------------------------------------------------------------
-  // AUTENTICAÇÃO E GESTÃO DE DADOS
+  // AUTENTICAÇÃO E GESTÃO DE DADOS (NUVEM RESTRITA)
   // ----------------------------------------------------------------------
   const handleAuth = async (e) => {
     e.preventDefault(); 
     setAuthError('');
     if (!emailInput || !passwordInput) { setAuthError('Por favor, preencha todos os campos.'); return; }
+    if (!firebaseReady) { setAuthError('Aguarde a conexão com o servidor em nuvem...'); return; }
     
     setIsAuthLoading(true);
     const isGabriell = emailInput.toLowerCase() === 'gabriell' && passwordInput === 'f8g4j10';
     const internalUserId = isGabriell ? 'admin_gabriell' : emailInput.toLowerCase().replace(/[^a-z0-9]/g, '_');
-    
-    let authSuccess = false;
-    let userDataToSet = null;
+    const userRef = doc(db, 'artifacts', appId, 'public', 'data', 'app_users', internalUserId);
 
-    // 1. Tentar Autenticação via Nuvem (Firebase)
-    if (firebaseUser && firebaseUser.uid !== 'anonymous_fallback_user') {
-      try {
-        const userRef = doc(db, 'artifacts', appId, 'public', 'data', 'app_users', internalUserId);
-        const userSnap = await getDoc(userRef);
-        
-        if (authMode === 'register' && !isGabriell) {
-          if (userSnap.exists()) {
-            setAuthError('Esta conta já existe na nuvem. Tente fazer o login.');
-            setIsAuthLoading(false);
-            return;
-          } else {
-            const newUser = { id: internalUserId, email: emailInput, password: passwordInput, name: emailInput.split('@')[0] };
-            await setDoc(userRef, newUser);
-            userDataToSet = newUser;
-            authSuccess = true;
-          }
-        } else {
-          if (isGabriell) {
-            const gabriellUser = { id: internalUserId, email: 'gabriell', password: 'f8g4j10', name: 'Gabriell' };
-            await setDoc(userRef, gabriellUser, { merge: true });
-            userDataToSet = gabriellUser;
-            authSuccess = true;
-          } else if (userSnap.exists()) {
-            const userData = userSnap.data();
-            if (userData.password === passwordInput) {
-              userDataToSet = userData;
-              authSuccess = true;
-            } else {
-              setAuthError('Palavra-passe incorreta (Nuvem).');
-              setIsAuthLoading(false);
-              return;
-            }
-          }
-        }
-      } catch (err) {
-        console.error("Erro no Auth Firebase:", err);
-        if (err.code === 'permission-denied' || err.message?.toLowerCase().includes('permission')) {
-          setFirebasePermissionError(true);
-        }
-      }
-    }
-
-    // 2. Fallback Local (Se a Nuvem falhar devido a permissões/rede)
-    if (!authSuccess) {
-      let users = getStoredUsers();
+    try {
+      const userSnap = await getDoc(userRef);
+      
       if (authMode === 'register' && !isGabriell) {
-        if (users.find(u => u.email.toLowerCase() === emailInput.toLowerCase())) {
-          setAuthError('Esta conta já existe localmente. Tente fazer o login.');
-          setIsAuthLoading(false);
-          return;
+        if (userSnap.exists()) {
+          setAuthError('Esta conta já existe. Tente fazer o login.');
         } else {
           const newUser = { id: internalUserId, email: emailInput, password: passwordInput, name: emailInput.split('@')[0] };
-          users.push(newUser);
-          localStorage.setItem('finances_users', JSON.stringify(users));
-          userDataToSet = newUser;
-          authSuccess = true;
+          await setDoc(userRef, newUser);
+          setCurrentUser(newUser);
+          localStorage.setItem('finances_current_user', JSON.stringify(newUser));
         }
       } else {
         if (isGabriell) {
-          userDataToSet = { id: internalUserId, email: 'gabriell', password: 'f8g4j10', name: 'Gabriell' };
-          authSuccess = true;
-        } else {
-          const localUser = users.find(u => u.email.toLowerCase() === emailInput.toLowerCase() && u.password === passwordInput);
-          if (localUser) {
-            userDataToSet = localUser;
-            authSuccess = true;
+          const gabriellUser = { id: internalUserId, email: 'gabriell', password: 'f8g4j10', name: 'Gabriell' };
+          await setDoc(userRef, gabriellUser, { merge: true });
+          setCurrentUser(gabriellUser);
+          localStorage.setItem('finances_current_user', JSON.stringify(gabriellUser));
+        } else if (userSnap.exists()) {
+          const userData = userSnap.data();
+          if (userData.password === passwordInput) {
+            setCurrentUser(userData);
+            localStorage.setItem('finances_current_user', JSON.stringify(userData));
           } else {
-            setAuthError('Conta não encontrada ou palavra-passe incorreta.');
+            setAuthError('Palavra-passe incorreta.');
           }
+        } else {
+          setAuthError('Conta não encontrada. Crie a sua conta primeiro.');
         }
       }
-    }
-
-    if (authSuccess && userDataToSet) {
-      setCurrentUser(userDataToSet);
-      localStorage.setItem('finances_current_user', JSON.stringify(userDataToSet));
-      setEmailInput(''); 
-      setPasswordInput('');
+    } catch (err) {
+      console.error("Erro no Auth Firebase:", err);
+      if (err.code === 'permission-denied' || err.message?.toLowerCase().includes('permission')) {
+        setFirebasePermissionError(true);
+        setAuthError('Falha de permissão. Leia as instruções vermelhas no ecrã.');
+      } else {
+        setAuthError('Erro de ligação ao servidor: ' + err.message);
+      }
     }
     
     setIsAuthLoading(false);
+    setEmailInput(''); setPasswordInput('');
   };
 
   const handleLogout = () => { setCurrentUser(null); localStorage.removeItem('finances_current_user'); };
@@ -665,12 +591,10 @@ export default function App() {
       localStorage.setItem(`finances_gemini_key_${currentUser.id}`, userSettings.geminiApiKey);
       const updatedUser = { ...currentUser, name: userSettings.displayName };
       
-      if (firebaseUser && firebaseUser.uid !== 'anonymous_fallback_user') {
-        const userRef = doc(db, 'artifacts', appId, 'public', 'data', 'app_users', currentUser.id);
-        setDoc(userRef, updatedUser, { merge: true }).catch(err => {
-          if (err.code === 'permission-denied' || err.message?.toLowerCase().includes('permission')) setFirebasePermissionError(true);
-        });
-      }
+      const userRef = doc(db, 'artifacts', appId, 'public', 'data', 'app_users', currentUser.id);
+      setDoc(userRef, updatedUser, { merge: true }).catch(err => {
+        if (err.code === 'permission-denied' || err.message?.toLowerCase().includes('permission')) setFirebasePermissionError(true);
+      });
       
       saveCloudConfig({ userSettings });
       
@@ -801,11 +725,9 @@ export default function App() {
     if (editingId) {
       const updatedTxn = { id: editingId, description, amount: numAmount, type, date, category, status: itemStatus };
       setTransactions(transactions.map(t => t.id === editingId ? updatedTxn : t));
-      if (firebaseUser && firebaseUser.uid !== 'anonymous_fallback_user') {
-        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', `txns_${currentUser.id}`, editingId), updatedTxn).catch(err => {
-          if (err.code === 'permission-denied' || err.message?.toLowerCase().includes('permission')) setFirebasePermissionError(true);
-        });
-      }
+      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', `txns_${currentUser.id}`, editingId), updatedTxn).catch(err => {
+        if (err.code === 'permission-denied' || err.message?.toLowerCase().includes('permission')) setFirebasePermissionError(true);
+      });
     } else {
       if ((type === 'expense' || type === 'income') && isInstallment && installmentsCount > 1) {
         const installmentAmount = numAmount / installmentsCount;
@@ -824,21 +746,17 @@ export default function App() {
         
         setTransactions([...transactions, ...newTransactions]);
         
-        if (firebaseUser && firebaseUser.uid !== 'anonymous_fallback_user') {
-          for (let t of newTransactions) {
-            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', `txns_${currentUser.id}`, t.id), t).catch(err => {
-              if (err.code === 'permission-denied' || err.message?.toLowerCase().includes('permission')) setFirebasePermissionError(true);
-            });
-          }
+        for (let t of newTransactions) {
+          await setDoc(doc(db, 'artifacts', appId, 'public', 'data', `txns_${currentUser.id}`, t.id), t).catch(err => {
+            if (err.code === 'permission-denied' || err.message?.toLowerCase().includes('permission')) setFirebasePermissionError(true);
+          });
         }
       } else {
         const newTxn = { id: generateSafeId(), description, amount: numAmount, type, date, category, status: itemStatus };
         setTransactions([...transactions, newTxn]);
-        if (firebaseUser && firebaseUser.uid !== 'anonymous_fallback_user') {
-          await setDoc(doc(db, 'artifacts', appId, 'public', 'data', `txns_${currentUser.id}`, newTxn.id), newTxn).catch(err => {
-            if (err.code === 'permission-denied' || err.message?.toLowerCase().includes('permission')) setFirebasePermissionError(true);
-          });
-        }
+        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', `txns_${currentUser.id}`, newTxn.id), newTxn).catch(err => {
+          if (err.code === 'permission-denied' || err.message?.toLowerCase().includes('permission')) setFirebasePermissionError(true);
+        });
       }
     }
     resetForm();
@@ -852,11 +770,9 @@ export default function App() {
     showConfirm('Apagar Registo', 'Deseja apagar este registo financeiro?', async () => {
       setTransactions(prev => prev.filter(t => t.id !== id)); 
       if(editingId === id) resetForm(); 
-      if (firebaseUser && firebaseUser.uid !== 'anonymous_fallback_user') {
-        await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', `txns_${currentUser.id}`, id)).catch(err => {
-          if (err.code === 'permission-denied' || err.message?.toLowerCase().includes('permission')) setFirebasePermissionError(true);
-        });
-      }
+      await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', `txns_${currentUser.id}`, id)).catch(err => {
+        if (err.code === 'permission-denied' || err.message?.toLowerCase().includes('permission')) setFirebasePermissionError(true);
+      });
     });
   };
   
@@ -866,11 +782,9 @@ export default function App() {
     const newStatus = (t.status || 'paid') === 'paid' ? 'pending' : 'paid';
     
     setTransactions(transactions.map(tx => tx.id === id ? { ...tx, status: newStatus } : tx)); 
-    if (firebaseUser && firebaseUser.uid !== 'anonymous_fallback_user') {
-      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', `txns_${currentUser.id}`, id), { ...t, status: newStatus }).catch(err => {
-        if (err.code === 'permission-denied' || err.message?.toLowerCase().includes('permission')) setFirebasePermissionError(true);
-      });
-    }
+    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', `txns_${currentUser.id}`, id), { ...t, status: newStatus }).catch(err => {
+      if (err.code === 'permission-denied' || err.message?.toLowerCase().includes('permission')) setFirebasePermissionError(true);
+    });
   };
 
   const prevMonth = () => { if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(currentYear - 1); } else { setCurrentMonth(currentMonth - 1); } };
@@ -1549,10 +1463,10 @@ export default function App() {
 
         {/* CONTEÚDO PRINCIPAL */}
         <main className="max-w-7xl mx-auto px-4 mt-8 relative z-10 no-print">
-          {!isDataLoaded && firebaseUser ? (
+          {!isDataLoaded && firebaseReady ? (
             <div className="flex flex-col items-center justify-center py-20">
               <Loader2 className="w-12 h-12 animate-spin text-indigo-500 mb-4" />
-              <p className="text-slate-500 font-bold">A carregar os seus dados da nuvem...</p>
+              <p className="text-slate-500 font-bold">A carregar os seus dados...</p>
             </div>
           ) : (
             <>
