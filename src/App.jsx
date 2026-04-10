@@ -12,7 +12,7 @@ import {
 
 // Importações do Firebase para Nuvem (Sincronização entre dispositivos)
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithCustomToken, signInAnonymously } from 'firebase/auth';
+import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, deleteDoc } from 'firebase/firestore';
 
 // ----------------------------------------------------------------------
@@ -90,11 +90,11 @@ const colorOptions = [
 ];
 
 const dailyTips = [
-  "Dica do Dia: Evite compras por impulso. Espere 24h antes de comprar algo não essencial.",
-  "Dica do Dia: A regra 50/30/20 diz que 50% é para necessidades, 30% para desejos e 20% para o futuro.",
-  "Dica do Dia: Reveja as suas subscrições mensais. Há alguma que não usa há meses?",
-  "Dica do Dia: Pague-se a si mesmo primeiro. Assim que receber o salário, invista logo uma parte.",
-  "Dica do Dia: O melhor dia para começar a investir foi ontem. O segundo melhor é hoje."
+  "Estratégia: Evite compras por impulso. Aplique a regra das 24h antes de adquirir algo não essencial.",
+  "Estratégia: A regra 50/30/20 (50% necessidades, 30% desejos, 20% futuro) é a base da estabilidade.",
+  "Estratégia: Faça uma auditoria às suas subscrições. Eliminar o que não usa aumenta o seu saldo livre.",
+  "Estratégia: Pague-se a si mesmo primeiro. Ao receber, invista imediatamente a sua percentagem definida.",
+  "Estratégia: Os juros compostos são o seu maior aliado. O melhor dia para começar a investir foi ontem."
 ];
 
 export default function App() {
@@ -205,6 +205,11 @@ export default function App() {
 
   useEffect(() => {
     localStorage.setItem('finances_theme', isDarkMode ? 'dark' : 'light');
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
   }, [isDarkMode]);
 
   // ----------------------------------------------------------------------
@@ -239,7 +244,7 @@ export default function App() {
     const userId = currentUser.id;
     const isDemoUser = currentUser.email.toLowerCase() === 'gabriell';
 
-    // 1. Tentar ler do localStorage para que o ecrã não fique em branco enquanto sincroniza
+    // 1. Ler do localStorage primeiro (Offline First visual)
     const localTxns = localStorage.getItem(`finances_data_user_${userId}`);
     if (localTxns) setTransactions(JSON.parse(localTxns));
     const localGoals = localStorage.getItem(`finances_goals_${userId}`);
@@ -586,6 +591,35 @@ export default function App() {
 
   const handleLogout = () => { setCurrentUser(null); localStorage.removeItem('finances_current_user'); };
 
+  const handleDeleteAccount = async () => {
+    showConfirm('Aviso de Risco Crítico', 'Tem a certeza absoluta? Esta ação apagará TODOS os seus dados, histórico, transações e configurações. É impossível reverter.', async () => {
+      try {
+        const userId = currentUser.id;
+        
+        for (const t of transactions) {
+          await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', `txns_${userId}`, t.id)).catch(() => {});
+        }
+        await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'config', userId)).catch(() => {});
+        await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'app_users', userId)).catch(() => {});
+
+        localStorage.removeItem('finances_current_user');
+        localStorage.removeItem(`finances_data_user_${userId}`);
+        localStorage.removeItem(`finances_goals_${userId}`);
+        localStorage.removeItem(`finances_budgets_${userId}`);
+        localStorage.removeItem(`finances_categories_${userId}`);
+        localStorage.removeItem(`finances_cards_${userId}`);
+        localStorage.removeItem(`finances_gemini_key_${userId}`);
+
+        setCurrentUser(null);
+        setShowSettingsModal(false);
+        showAlert('Conta Encerrada', 'A sua conta e todos os dados foram removidos com sucesso. Agradecemos por ter utilizado o nosso sistema.');
+      } catch (error) {
+        console.error(error);
+        showAlert('Erro', 'Ocorreu um erro ao tentar apagar a sua conta.');
+      }
+    });
+  };
+
   const handleSaveSettings = () => {
     if (currentUser) {
       localStorage.setItem(`finances_gemini_key_${currentUser.id}`, userSettings.geminiApiKey);
@@ -644,7 +678,7 @@ export default function App() {
   };
 
   const handleDeleteCard = (id) => {
-    showConfirm('Excluir Cartão', 'Tem a certeza que deseja excluir este cartão? As transações registadas nele serão mantidas.', () => {
+    showConfirm('Excluir Cartão', 'Tem a certeza que deseja excluir este cartão?', () => {
       const newCards = cards.filter(c => c.id !== id);
       setCards(newCards);
       saveCloudConfig({ cards: newCards });
@@ -881,16 +915,21 @@ export default function App() {
   }, [chartData]);
 
   const handleCalcClickWrapper = (val) => {
-    if (val === 'C') setCalcInput('');
-    else if (val === '=') setCalcInput(evaluateMath(calcInput));
-    else setCalcInput(prev => prev === 'Erro' ? val : prev + val);
+    setCalcInput(prev => {
+      if (val === 'C') return '';
+      if (val === '⌫') return prev === 'Erro' ? '' : prev.slice(0, -1);
+      if (val === '%') {
+        if (!prev || prev === 'Erro') return '';
+        const evaluated = evaluateMath(prev);
+        if (evaluated === 'Erro') return 'Erro';
+        const num = parseFloat(evaluated.replace(',', '.'));
+        return String(num / 100).replace('.', ',');
+      }
+      if (val === '=') return evaluateMath(prev);
+      
+      return prev === 'Erro' ? val : prev + val;
+    });
   };
-
-  const healthTheme = useMemo(() => {
-    if (budgetPercentage > 90 || realBalance < 0) return { bg: 'from-rose-950 to-rose-900', border: 'border-rose-500/50', text: 'text-rose-100' };
-    if (budgetPercentage > 75) return { bg: 'from-orange-950 to-amber-900', border: 'border-amber-500/50', text: 'text-amber-100' };
-    return { bg: 'from-slate-900 via-indigo-950 to-slate-900', border: 'border-white/20', text: 'text-indigo-100' };
-  }, [budgetPercentage, realBalance]);
 
   const nativeInsights = useMemo(() => {
     let insights = [];
@@ -945,19 +984,19 @@ export default function App() {
     let html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
     <head><meta charset="utf-8" />
     <style>
-      table { background-color: #000000; color: #ffffff; border-collapse: collapse; font-family: Calibri, sans-serif; font-size: 14px; }
-      td, th { border: 1px solid #333333; padding: 6px; text-align: center; white-space: nowrap; }
-      .hdr { font-weight: bold; text-align: left; }
-      .inc { color: #00ff00; font-weight: bold; }
-      .exp { color: #ff0000; font-weight: bold; }
-      .total-row { font-weight: bold; background-color: #111111; }
+      table { background-color: #ffffff; color: #000000; border-collapse: collapse; font-family: Calibri, sans-serif; font-size: 14px; }
+      td, th { border: 1px solid #dddddd; padding: 6px; text-align: center; white-space: nowrap; }
+      .hdr { font-weight: bold; text-align: left; background-color: #f3f4f6; }
+      .inc { color: #059669; font-weight: bold; }
+      .exp { color: #dc2626; font-weight: bold; }
+      .total-row { font-weight: bold; background-color: #e5e7eb; }
     </style></head><body>
-    <h2 style="color: #ffffff; font-family: Calibri, sans-serif;">Demonstrativo Financeiro - Ano ${currentYear}</h2>
+    <h2 style="color: #1e293b; font-family: Calibri, sans-serif;">Demonstrativo Financeiro - Ano ${currentYear}</h2>
     <table>`;
 
-    html += `<tr><td class="hdr">\\Banco</td>`;
+    html += `<tr><td class="hdr">Banco / Cartão</td>`;
     activeCards.forEach(c => html += `<td class="hdr">${c.id}</td>`);
-    html += `<td class="hdr">total</td></tr>`;
+    html += `<td class="hdr">Total</td></tr>`;
 
     html += `<tr><td class="hdr">Sobra</td>`;
     let totalSobra = 0;
@@ -969,17 +1008,16 @@ export default function App() {
     });
     html += `<td>${totalSobra.toFixed(2)}</td></tr>`;
 
-    html += `<tr><td class="hdr">limite</td>`;
+    html += `<tr><td class="hdr">Limite</td>`;
     let totalLimite = 0;
     activeCards.forEach(c => { totalLimite += c.limit; html += `<td>${c.limit.toFixed(2)}</td>`; });
     html += `<td>${totalLimite.toFixed(2)}</td></tr>`;
 
-    html += `<tr><td class="hdr">data venc</td>`;
-    activeCards.forEach(c => html += `<td>dia ${c.dueDay}</td>`);
+    html += `<tr><td class="hdr">Data Venc.</td>`;
+    activeCards.forEach(c => html += `<td>Dia ${c.dueDay}</td>`);
     html += `<td></td></tr>`;
 
-    html += `<tr><td colspan="${activeCards.length + 2}" style="border: none; background-color: #000000;"></td></tr>`;
-    html += `<tr><td colspan="${activeCards.length + 2}" style="border: none; background-color: #000000;"></td></tr>`;
+    html += `<tr><td colspan="${activeCards.length + 2}" style="border: none; background-color: #ffffff; height: 20px;"></td></tr>`;
 
     html += `<tr><td class="hdr">Categorias</td>`;
     monthKeys.forEach(ym => {
@@ -997,10 +1035,10 @@ export default function App() {
       monthKeys.forEach((m, i) => {
         const val = yearTransactions.filter(t => t.category === cat && t.type === 'income' && t.date.startsWith(m)).reduce((s, t) => s + t.amount, 0);
         rowTotal += val; incomeMonthsTotal[i] += val; if (val > 0) hasValue = true;
-        rowHtml += `<td class="inc">${val > 0 ? (-val).toFixed(2) : ''}</td>`;
+        rowHtml += `<td class="inc">${val > 0 ? (+val).toFixed(2) : ''}</td>`;
       });
       incomeTotalGlobal += rowTotal;
-      rowHtml += `<td class="inc">${rowTotal > 0 ? (-rowTotal).toFixed(2) : ''}</td></tr>`;
+      rowHtml += `<td class="inc">${rowTotal > 0 ? (+rowTotal).toFixed(2) : ''}</td></tr>`;
       if (hasValue) html += rowHtml; 
     });
 
@@ -1020,7 +1058,7 @@ export default function App() {
       if (hasValue) html += rowHtml;
     });
 
-    html += `<tr class="total-row"><td class="hdr">Fatura / Gastos</td>`;
+    html += `<tr class="total-row"><td class="hdr">Total de Gastos</td>`;
     expenseMonthsTotal.forEach(val => html += `<td class="exp">${val.toFixed(2)}</td>`);
     html += `<td class="exp">${expenseTotalGlobal.toFixed(2)}</td></tr>`;
 
@@ -1029,9 +1067,9 @@ export default function App() {
     monthKeys.forEach((m, i) => {
       const sobra = incomeMonthsTotal[i] - expenseMonthsTotal[i];
       grandSobraGlobal += sobra;
-      html += `<td style="color: ${sobra >= 0 ? '#00ff00' : '#ff0000'}; font-weight: bold;">${sobra.toFixed(2)}</td>`;
+      html += `<td style="color: ${sobra >= 0 ? '#059669' : '#dc2626'}; font-weight: bold;">${sobra.toFixed(2)}</td>`;
     });
-    html += `<td style="color: ${grandSobraGlobal >= 0 ? '#00ff00' : '#ff0000'}; font-weight: bold;">${grandSobraGlobal.toFixed(2)}</td></tr>`;
+    html += `<td style="color: ${grandSobraGlobal >= 0 ? '#059669' : '#dc2626'}; font-weight: bold;">${grandSobraGlobal.toFixed(2)}</td></tr>`;
 
     html += `</table></body></html>`;
 
@@ -1058,15 +1096,6 @@ export default function App() {
           document.head.appendChild(script);
         });
       }
-
-      const quotes = [
-        "O dinheiro é um mestre terrível, mas um excelente servo. — P.T. Barnum",
-        "Não economize o que sobra após os gastos, mas gaste o que sobra após as economias. — Warren Buffett",
-        "Riqueza é o que você não vê. São os carros não comprados, as viagens não feitas... — Morgan Housel",
-        "A paz financeira não é a aquisição de coisas. É aprender a viver com menos do que ganha. — Dave Ramsey",
-        "O hábito de poupar é em si mesmo uma educação; fomenta todas as virtudes e ensina a autonegação. — T.T. Munger"
-      ];
-      const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
 
       const canvas = document.createElement('canvas');
       canvas.width = 400;
@@ -1096,9 +1125,9 @@ export default function App() {
 
       const element = document.createElement('div');
       element.innerHTML = `
-        <div style="padding: 40px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #1e293b; background: #fff;">
+        <div style="padding: 40px; font-family: 'Plus Jakarta Sans', sans-serif; color: #0f172a; background: #fff;">
           <div style="text-align: center; margin-bottom: 40px; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px;">
-            <h1 style="color: #312e81; font-size: 32px; margin: 0 0 10px 0;">Relatório Financeiro</h1>
+            <h1 style="color: #0f172a; font-size: 32px; margin: 0 0 10px 0; font-weight: 900;">Relatório Financeiro</h1>
             <h2 style="color: #64748b; font-size: 18px; margin: 0; text-transform: uppercase; letter-spacing: 1px;">${monthNames[currentMonth]} ${currentYear}</h2>
           </div>
           
@@ -1129,7 +1158,7 @@ export default function App() {
             <tbody>
               ${filteredTransactions.map((t, index) => `
                 <tr style="background: ${index % 2 === 0 ? '#ffffff' : '#f8fafc'}; page-break-inside: avoid;">
-                  <td style="padding: 12px 15px; border-bottom: 1px solid #e2e8f0; color: #64748b;">
+                  <td style="padding: 12px 15px; border-bottom: 1px solid #e2e8f0; color: #64748b; font-weight: bold;">
                     ${t.date.split('-').reverse().join('/')}
                     ${t.status === 'pending' ? '<br><span style="font-size: 9px; color: #d97706; background: #fef3c7; padding: 2px 6px; border-radius: 4px; font-weight: bold; text-transform: uppercase;">Pendente</span>' : ''}
                   </td>
@@ -1148,7 +1177,7 @@ export default function App() {
           
           ${expense > 0 ? `
           <div style="margin-top: 40px; page-break-inside: avoid; background: #fff;">
-            <h3 style="color: #312e81; font-size: 18px; text-align: center; margin-bottom: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; font-weight: bold; text-transform: uppercase;">Análise de Gastos</h3>
+            <h3 style="color: #0f172a; font-size: 18px; text-align: center; margin-bottom: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; font-weight: 900; text-transform: uppercase;">Análise de Gastos</h3>
             <div style="display: flex; justify-content: center; align-items: center; gap: 40px; padding: 20px;">
               <div style="width: 160px; height: 160px; border-radius: 50%; border: 8px solid #f8fafc; overflow: hidden; background: #f1f5f9;">
                 <img src="${pieChartImagePNG}" style="width: 100%; height: 100%; display: block; object-fit: contain;" />
@@ -1167,14 +1196,8 @@ export default function App() {
             </div>
           </div>` : ''}
 
-          <div style="margin-top: 40px; padding: 20px; background: #f8fafc; border-left: 4px solid #4f46e5; border-radius: 8px; page-break-inside: avoid;">
-            <p style="margin: 0; font-style: italic; color: #475569; font-size: 14px; line-height: 1.5; font-weight: bold;">
-              "${randomQuote}"
-            </p>
-          </div>
-
           <div style="margin-top: 30px; text-align: center; font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; page-break-inside: avoid;">
-            Documento gerado pelo sistema 100 Aperto em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}
+            Documento gerado pelo sistema 100 Aperto em ${new Date().toLocaleDateString('pt-BR')}
           </div>
         </div>
       `;
@@ -1219,7 +1242,7 @@ export default function App() {
 
   const permissionModal = firebasePermissionError && (
     <div className="fixed inset-0 z-[200] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl p-8 max-w-md text-center shadow-2xl animate-in zoom-in-95">
+      <div className="glass-card rounded-[2rem] p-8 max-w-md text-center shadow-2xl animate-in zoom-in-95">
         <div className="mx-auto w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mb-6">
           <AlertCircle className="w-8 h-8 text-rose-600" />
         </div>
@@ -1251,47 +1274,61 @@ export default function App() {
     return (
       <>
         {permissionModal}
-        <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 font-sans relative overflow-hidden">
+        <style dangerouslySetInnerHTML={{__html: `@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');`}} />
+        <div className={`min-h-screen flex items-center justify-center p-4 relative overflow-hidden ${isDarkMode ? 'dark-theme' : 'bg-slate-50'}`} style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}>
           
-          {/* Decorative background blocks */}
-          <div className="fixed inset-0 pointer-events-none z-0 bg-grid-pattern mask-radial opacity-50"></div>
-          <div className="fixed inset-0 pointer-events-none z-0 bg-gradient-to-tr from-indigo-900/20 to-purple-900/20"></div>
+          <div className="fixed inset-0 pointer-events-none z-0 bg-grid-pattern mask-radial opacity-60"></div>
+          {isDarkMode && <div className="fixed inset-0 pointer-events-none z-0 bg-gradient-to-br from-indigo-950/40 via-purple-950/40 to-[#0b0410] opacity-50"></div>}
 
-          <div className="glass-card rounded-[2rem] p-8 md:p-10 w-full max-w-md mx-4 relative z-10">
+          <div className="glass-card rounded-[2.5rem] p-8 md:p-12 w-full max-w-md mx-4 relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-1000">
             <div className="flex justify-center mb-8">
-              <div className="w-24 h-24 bg-gradient-to-tr from-indigo-400 to-purple-500 rounded-3xl flex items-center justify-center shadow-2xl shadow-indigo-500/40 transform -rotate-6 hover:rotate-0 transition-transform duration-500">
-                <Wallet className="w-12 h-12 text-white" />
+              {/* Moldura Premium para o novo Ícone */}
+              <div className="w-32 h-32 rounded-[2.5rem] shadow-2xl shadow-purple-500/30 overflow-hidden border border-white/10 ring-4 ring-indigo-500/10 dark:ring-white/5 relative group bg-gradient-to-b from-indigo-50 dark:from-white/10 to-transparent">
+                <div className="w-full h-full overflow-hidden relative rounded-[2.5rem]">
+                  <div className="absolute inset-0 bg-gradient-to-tr from-amber-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-10"></div>
+                  <img src="/logo.jpg" alt="100 Aperto" className="w-full h-full object-cover scale-[1.05] transform group-hover:scale-[1.12] transition-transform duration-700" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
+                  <div className="hidden w-full h-full bg-gradient-to-tr from-indigo-600 to-purple-800 items-center justify-center">
+                     <Wallet className="w-14 h-14 text-white" />
+                  </div>
+                </div>
               </div>
             </div>
-            <h1 className="text-4xl font-black text-center text-white drop-shadow-md mb-2 tracking-tight">100 Aperto</h1>
-            <p className="text-center text-slate-600 mb-8 font-medium">{authMode === 'login' ? 'Aceda ao seu painel financeiro.' : 'Crie a sua conta gratuita.'}</p>
+            
+            <h1 className="text-4xl md:text-5xl font-black text-center mb-3 tracking-tighter flex justify-center items-center gap-2">
+              <span className="text-transparent bg-clip-text bg-gradient-to-br from-amber-400 to-orange-500 drop-shadow-sm">100</span>
+              <span className="text-slate-900 dark:text-white drop-shadow-md">Aperto</span>
+            </h1>
+            
+            <p className="text-center text-slate-500 dark:text-indigo-100/90 mb-8 font-semibold px-4 text-sm md:text-base tracking-wide drop-shadow-sm">
+              {authMode === 'login' ? 'Inteligência financeira ao seu alcance.' : 'Transforme o seu futuro financeiro hoje.'}
+            </p>
             
             <form onSubmit={handleAuth} className="space-y-5">
-              {authError && <div className="bg-rose-500/10 text-rose-600 p-4 rounded-2xl text-sm font-medium text-center border border-rose-500/20">{authError}</div>}
+              {authError && <div className="bg-rose-500/20 text-rose-600 dark:text-rose-300 p-4 rounded-2xl text-sm font-bold text-center border border-rose-500/30">{authError}</div>}
               
               <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-slate-500 group-focus-within:text-indigo-600 transition-colors" />
+                  <Mail className="h-5 w-5 text-slate-400 dark:text-purple-400/70 group-focus-within:text-amber-500 dark:group-focus-within:text-amber-400 transition-colors" />
                 </div>
-                <input type="text" value={emailInput} onChange={(e) => setEmailInput(e.target.value)} placeholder="Nome ou E-mail" className="glass-input w-full pl-12 pr-4 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-indigo-500/20 transition-all font-bold placeholder-slate-500" />
+                <input type="text" value={emailInput} onChange={(e) => setEmailInput(e.target.value)} placeholder="Nome ou E-mail" className="glass-input w-full pl-12 pr-4 py-4 rounded-2xl outline-none focus:border-amber-400/70 focus:ring-4 focus:ring-amber-500/10 transition-all font-bold placeholder-slate-400 dark:placeholder-purple-300/40" />
               </div>
               
               <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-slate-500 group-focus-within:text-indigo-600 transition-colors" />
+                  <Lock className="h-5 w-5 text-slate-400 dark:text-purple-400/70 group-focus-within:text-amber-500 dark:group-focus-within:text-amber-400 transition-colors" />
                 </div>
-                <input type="password" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} placeholder="Palavra-passe" className="glass-input w-full pl-12 pr-4 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-indigo-500/20 transition-all font-bold placeholder-slate-500" />
+                <input type="password" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} placeholder="Palavra-passe" className="glass-input w-full pl-12 pr-4 py-4 rounded-2xl outline-none focus:border-amber-400/70 focus:ring-4 focus:ring-amber-500/10 transition-all font-bold placeholder-slate-400 dark:placeholder-purple-300/40" />
               </div>
               
-              <button disabled={isAuthLoading} type="submit" className="w-full py-4 mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl shadow-xl shadow-indigo-600/30 transform transition-all active:scale-95 flex items-center justify-center gap-2 text-lg disabled:opacity-50">
-                {isAuthLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : (authMode === 'login' ? <LogIn className="w-6 h-6" /> : <UserPlus className="w-6 h-6" />)}
+              <button disabled={isAuthLoading} type="submit" className="w-full py-4 mt-4 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-slate-900 font-black uppercase tracking-widest text-sm rounded-2xl shadow-lg shadow-amber-500/20 transform transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50">
+                {isAuthLoading ? <Loader2 className="w-5 h-5 animate-spin text-slate-900" /> : (authMode === 'login' ? <LogIn className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />)}
                 {authMode === 'login' ? 'Entrar na Conta' : 'Criar Conta'}
               </button>
             </form>
 
             <div className="mt-8 text-center">
-              <button onClick={() => { setAuthMode(authMode === 'login' ? 'register' : 'login'); setAuthError(''); setEmailInput(''); setPasswordInput(''); }} className="text-indigo-600 hover:text-indigo-800 font-bold text-sm transition-colors">
-                {authMode === 'login' ? 'Não tem uma conta? Registe-se aqui.' : 'Já tem uma conta? Entre aqui.'}
+              <button onClick={() => { setAuthMode(authMode === 'login' ? 'register' : 'login'); setAuthError(''); setEmailInput(''); setPasswordInput(''); }} className="text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 font-bold text-xs uppercase tracking-widest transition-colors">
+                {authMode === 'login' ? 'Não tem uma conta? Registe-se aqui' : 'Já tem uma conta? Entre aqui'}
               </button>
             </div>
           </div>
@@ -1317,147 +1354,167 @@ export default function App() {
 
       {permissionModal}
 
-      {/* DEFINIÇÕES DE ESTILO GLASSMORPHISM E DARK MODE OVERRIDES */}
+      {/* DEFINIÇÕES DE ESTILO E DARK MODE OVERRIDES (Glass no Claro, Sólido no Escuro) */}
       <style dangerouslySetInnerHTML={{__html: `
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+        
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+
+        /* MODO CLARO - Glassmorphism Premium Original */
         .glass-card {
-          background: rgba(255, 255, 255, 0.85);
+          background: rgba(255, 255, 255, 0.95);
           backdrop-filter: blur(20px);
           -webkit-backdrop-filter: blur(20px);
-          border: 1px solid rgba(255, 255, 255, 0.6);
+          border: 1px solid rgba(226, 232, 240, 0.8);
           box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
         }
-        .dark-theme .glass-card {
-          background: rgba(30, 41, 59, 0.85) !important;
-          border: 1px solid rgba(255, 255, 255, 0.1) !important;
-          box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5) !important;
-        }
         .glass-input {
-          background: rgba(255, 255, 255, 0.5);
-          border: 1px solid rgba(255, 255, 255, 0.8);
+          background: #ffffff;
+          border: 1px solid #cbd5e1;
           color: #0f172a;
         }
-        .dark-theme .glass-input {
-          background: rgba(15, 23, 42, 0.5) !important;
-          border: 1px solid rgba(255, 255, 255, 0.1) !important;
-          color: #f8fafc !important;
+        .glass-panel { 
+          background: #f8fafc; 
+          border: 1px solid #e2e8f0;
         }
-        .glass-panel { background: rgba(248, 250, 252, 0.6); }
-        .dark-theme .glass-panel { background: rgba(15, 23, 42, 0.5) !important; }
-
-        .dark-theme { background-color: #020617 !important; color: #f8fafc !important; }
-        .dark-theme .text-slate-900, .dark-theme .text-slate-800 { color: #f8fafc !important; }
-        .dark-theme .text-slate-700, .dark-theme .text-slate-600 { color: #e2e8f0 !important; }
-        .dark-theme .text-slate-500, .dark-theme .text-slate-400 { color: #cbd5e1 !important; }
         
-        .dark-theme .bg-emerald-50 { background-color: rgba(6, 78, 59, 0.3) !important; border-color: rgba(52, 211, 153, 0.2) !important;}
-        .dark-theme .bg-rose-50 { background-color: rgba(136, 19, 55, 0.3) !important; border-color: rgba(251, 113, 133, 0.2) !important;}
-        .dark-theme .bg-indigo-50 { background-color: rgba(49, 46, 129, 0.3) !important; border-color: rgba(129, 140, 248, 0.2) !important;}
-        .dark-theme .bg-amber-50 { background-color: rgba(120, 53, 15, 0.3) !important; border-color: rgba(251, 191, 36, 0.2) !important;}
+        /* MODO ESCURO - Roxo Profundo Sólido */
+        .dark-theme { background-color: #0b0410 !important; color: #ffffff !important; }
+        .dark-theme .text-slate-900, .dark-theme .text-slate-800 { color: #ffffff !important; }
+        .dark-theme .text-slate-700, .dark-theme .text-slate-600 { color: #e9d5ff !important; }
+        .dark-theme .text-slate-500, .dark-theme .text-slate-400 { color: rgba(233, 213, 255, 0.7) !important; }
+        
+        .dark-theme .glass-card {
+          background: #160a22 !important;
+          backdrop-filter: none !important;
+          -webkit-backdrop-filter: none !important;
+          border: 1px solid rgba(167, 139, 250, 0.2) !important;
+          box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5) !important;
+        }
+        .dark-theme .glass-input {
+          background: #0b0410 !important;
+          border: 1px solid rgba(167, 139, 250, 0.3) !important;
+          color: #ffffff !important;
+        }
+        .dark-theme .glass-panel { 
+          background: #200f33 !important; 
+          border: 1px solid rgba(167, 139, 250, 0.2) !important; 
+        }
+
+        .dark-theme .bg-emerald-50 { background-color: rgba(6, 78, 59, 0.4) !important; border-color: rgba(52, 211, 153, 0.3) !important;}
+        .dark-theme .bg-rose-50 { background-color: rgba(136, 19, 55, 0.4) !important; border-color: rgba(251, 113, 133, 0.3) !important;}
+        .dark-theme .bg-indigo-50 { background-color: rgba(76, 29, 149, 0.4) !important; border-color: rgba(167, 139, 250, 0.3) !important;}
+        .dark-theme .bg-amber-50 { background-color: rgba(120, 53, 15, 0.4) !important; border-color: rgba(251, 191, 36, 0.3) !important;}
         
         .dark-theme .text-emerald-600 { color: #34d399 !important; }
         .dark-theme .text-rose-600 { color: #fb7185 !important; }
-        .dark-theme .text-indigo-600 { color: #818cf8 !important; }
+        .dark-theme .text-indigo-600 { color: #a78bfa !important; }
         .dark-theme .text-amber-600 { color: #fbbf24 !important; }
-        .dark-theme .text-emerald-500 { color: #10b981 !important; }
-        .dark-theme .text-rose-500 { color: #f43f5e !important; }
-        .dark-theme .text-indigo-500 { color: #6366f1 !important; }
-        .dark-theme .text-amber-500 { color: #f59e0b !important; }
 
         @media print {
           .no-print { display: none !important; }
           body { background: white !important; }
         }
 
-        /* NOVOS EFEITOS DE FUNDO (MALHA TECNOLÓGICA) */
+        /* FUNDO DISCRETO E PROFISSIONAL */
         .bg-grid-pattern {
           background-size: 40px 40px;
-          background-image: linear-gradient(to right, rgba(99, 102, 241, 0.08) 1px, transparent 1px),
-                            linear-gradient(to bottom, rgba(99, 102, 241, 0.08) 1px, transparent 1px);
+          background-image: linear-gradient(to right, rgba(99, 102, 241, 0.05) 1px, transparent 1px),
+                            linear-gradient(to bottom, rgba(99, 102, 241, 0.05) 1px, transparent 1px);
         }
         .dark-theme .bg-grid-pattern {
-          background-image: linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-                            linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+          background-image: linear-gradient(to right, rgba(167, 139, 250, 0.03) 1px, transparent 1px),
+                            linear-gradient(to bottom, rgba(167, 139, 250, 0.03) 1px, transparent 1px);
         }
         .mask-radial {
-          mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
-          -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
+          mask-image: radial-gradient(ellipse at top center, black 30%, transparent 80%);
+          -webkit-mask-image: radial-gradient(ellipse at top center, black 30%, transparent 80%);
         }
       `}} />
 
-      <div className={`min-h-screen relative font-sans text-slate-900 pb-24 md:pb-12 ${isDarkMode ? 'dark-theme' : 'bg-slate-50'}`}>
+      <div className={`min-h-screen relative pb-24 md:pb-12 ${isDarkMode ? 'dark-theme' : 'bg-slate-50'}`}>
         
         {/* DECORATIVE BACKGROUND */}
         <div className="fixed inset-0 pointer-events-none z-0 no-print bg-grid-pattern mask-radial opacity-60"></div>
+        {isDarkMode && <div className="fixed inset-0 pointer-events-none z-0 bg-gradient-to-br from-indigo-950/40 via-purple-950/40 to-[#0b0410] opacity-50"></div>}
 
         {/* --- HEADER --- */}
-        <header className={`relative z-40 transition-colors duration-500 no-print ${isDarkMode ? 'bg-slate-900/50 border-b border-white/10' : 'bg-white/50 border-b border-slate-200/50 backdrop-blur-xl'}`}>
+        <header className="relative z-[60] transition-colors duration-500 no-print glass-card !rounded-none !border-x-0 !border-t-0">
           <div className="max-w-7xl mx-auto px-4 py-3 md:py-4 flex flex-col md:flex-row justify-between items-center gap-4">
             
             <div className="flex justify-between w-full md:w-auto items-center">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-gradient-to-tr from-indigo-500 to-purple-600 rounded-xl shadow-lg shadow-indigo-500/30">
-                  <Wallet className="w-6 h-6 text-white" />
+                <div className="w-11 h-11 bg-gradient-to-b from-white/10 to-transparent rounded-[1rem] shadow-lg shadow-amber-500/20 overflow-hidden shrink-0 border border-purple-500/30 relative p-0.5">
+                  <div className="w-full h-full rounded-[1rem] overflow-hidden">
+                    <img src="/logo.jpg" alt="100 Aperto" className="w-full h-full object-cover scale-[1.05]" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
+                    <div className="hidden w-full h-full bg-gradient-to-tr from-indigo-600 to-purple-800 items-center justify-center">
+                       <Wallet className="w-6 h-6 text-white" />
+                    </div>
+                  </div>
                 </div>
-                <div className="flex flex-col">
-                  <h1 className={`text-2xl font-black tracking-tight leading-none ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>100 Aperto</h1>
-                  <span className="text-[10px] font-bold text-indigo-500 tracking-widest uppercase">Olá, {currentUser?.name}</span>
+                <div className="flex flex-col pointer-events-none">
+                  <h1 className="text-2xl font-black tracking-tight leading-none flex gap-1">
+                    <span className="text-transparent bg-clip-text bg-gradient-to-br from-amber-400 to-orange-500">100</span>
+                    <span className="text-slate-900">Aperto</span>
+                  </h1>
+                  <span className="text-[10px] font-bold text-indigo-500 tracking-widest uppercase mt-0.5">Olá, {currentUser?.name}</span>
                 </div>
               </div>
-              <div className="flex md:hidden items-center gap-1.5">
+              <div className="flex md:hidden items-center gap-1.5 relative z-[70]">
                 <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2 glass-panel rounded-xl transition-colors">
                   {isDarkMode ? <Sun className="w-4 h-4 text-white" /> : <Moon className="w-4 h-4 text-slate-700" />}
                 </button>
                 <button onClick={() => setShowCalculator(true)} className="p-2 glass-panel rounded-xl transition-colors">
                   <CalculatorIcon className={`w-4 h-4 ${isDarkMode ? 'text-white' : 'text-slate-700'}`} />
                 </button>
-                <button onClick={handleLogout} className="p-2 bg-rose-500/10 hover:bg-rose-500/20 rounded-xl transition-colors">
+                <button onClick={handleLogout} className="p-2 bg-rose-50 hover:bg-rose-100 rounded-xl transition-colors">
                   <LogOut className="w-4 h-4 text-rose-500" />
                 </button>
               </div>
             </div>
             
-            <div className="flex items-center gap-1 glass-panel rounded-2xl p-1 w-full md:w-auto justify-between shadow-inner">
-              <button onClick={prevMonth} className="p-2.5 hover:bg-black/5 rounded-xl transition-colors"><ChevronLeft className="w-5 h-5" /></button>
-              <div className="flex items-center gap-2 font-black text-base md:text-lg px-4">
+            <div className="flex items-center gap-1 glass-panel rounded-2xl p-1 w-full md:w-auto justify-between relative z-[70]">
+              <button onClick={prevMonth} className="p-2.5 hover:bg-black/5 dark:hover:bg-white/10 rounded-xl transition-colors shadow-sm"><ChevronLeft className="w-5 h-5" /></button>
+              <div className="flex items-center gap-2 font-black text-base md:text-lg px-4 pointer-events-none">
                 <Calendar className="w-4 h-4 opacity-60 hidden md:block" />
                 {monthNames[currentMonth]} {currentYear}
               </div>
-              <button onClick={nextMonth} className="p-2.5 hover:bg-black/5 rounded-xl transition-colors"><ChevronRight className="w-5 h-5" /></button>
+              <button onClick={nextMonth} className="p-2.5 hover:bg-black/5 dark:hover:bg-white/10 rounded-xl transition-colors shadow-sm"><ChevronRight className="w-5 h-5" /></button>
             </div>
 
-            <div className="hidden md:flex items-center gap-3">
-              <div className="flex items-center gap-2 text-slate-800 dark:text-white text-sm font-bold mr-2 px-5 py-2.5 glass-panel rounded-2xl">
-                <User className="w-4 h-4" /> <span className="max-w-[120px] truncate">{currentUser?.name}</span>
-                {nativeInsights.badges.length > 0 && <div className="w-px h-4 bg-slate-300 dark:bg-slate-600 mx-1"></div>}
+            <div className="hidden md:flex items-center gap-3 relative z-[70]">
+              <div className="flex items-center gap-2 text-sm font-bold mr-2 px-5 py-2.5 glass-panel rounded-2xl pointer-events-none">
+                <User className="w-4 h-4 text-indigo-500" /> <span className="max-w-[120px] truncate text-slate-800">{currentUser?.name}</span>
+                {nativeInsights.badges.length > 0 && <div className="w-px h-4 bg-slate-300 mx-1"></div>}
                 <div className="flex -space-x-1">
-                  {nativeInsights.badges.map((b, i) => <div key={i} className="w-6 h-6 rounded-full bg-white/50 border border-white/50 flex items-center justify-center backdrop-blur-md shadow-sm text-indigo-600" title={b.label}>{b.icon}</div>)}
+                  {nativeInsights.badges.map((b, i) => <div key={i} className="w-6 h-6 rounded-full glass-card flex items-center justify-center shadow-sm text-indigo-600" title={b.label}>{b.icon}</div>)}
                 </div>
               </div>
-              <div className="flex glass-panel p-1.5 rounded-2xl shadow-inner gap-1">
-                <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2.5 hover:bg-black/5 rounded-xl transition-colors" title="Alternar Tema Escuro">
-                  {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              <div className="flex glass-panel p-1.5 rounded-2xl gap-1">
+                <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2.5 hover:bg-black/5 dark:hover:bg-white/10 rounded-xl transition-colors shadow-sm" title="Alternar Tema Escuro">
+                  {isDarkMode ? <Sun className="w-5 h-5 text-white" /> : <Moon className="w-5 h-5 text-slate-700" />}
                 </button>
-                <button onClick={() => setShowSettingsModal(true)} className="p-2.5 hover:bg-black/5 rounded-xl transition-colors" title="Configurações"><Settings className="w-5 h-5" /></button>
-                <button onClick={() => setShowCalculator(true)} className="p-2.5 hover:bg-black/5 rounded-xl transition-colors" title="Calculadora"><CalculatorIcon className="w-5 h-5" /></button>
-                <button onClick={() => setShowSyncModal(true)} className="p-2.5 hover:bg-black/5 rounded-xl transition-colors" title="Sincronizar Dados"><RefreshCw className="w-5 h-5" /></button>
-                <button onClick={handleLogout} className="p-2.5 hover:bg-rose-500/20 rounded-xl text-rose-500 transition-colors" title="Sair da Conta"><LogOut className="w-5 h-5" /></button>
+                <button onClick={() => setShowSettingsModal(true)} className="p-2.5 hover:bg-black/5 dark:hover:bg-white/10 rounded-xl transition-colors shadow-sm" title="Configurações"><Settings className="w-5 h-5 text-slate-700" /></button>
+                <button onClick={() => setShowCalculator(true)} className="p-2.5 hover:bg-black/5 dark:hover:bg-white/10 rounded-xl transition-colors shadow-sm" title="Calculadora"><CalculatorIcon className="w-5 h-5 text-slate-700" /></button>
+                <button onClick={() => setShowSyncModal(true)} className="p-2.5 hover:bg-black/5 dark:hover:bg-white/10 rounded-xl transition-colors shadow-sm" title="Sincronizar Dados"><RefreshCw className="w-5 h-5 text-slate-700" /></button>
+                <button onClick={handleLogout} className="p-2.5 hover:bg-rose-50 rounded-xl text-rose-500 transition-colors shadow-sm" title="Sair da Conta"><LogOut className="w-5 h-5" /></button>
               </div>
             </div>
           </div>
 
-          <div className="bg-indigo-500/10 border-t border-indigo-500/20 px-4 py-2 flex items-center justify-center gap-2 text-xs font-bold text-indigo-700 dark:text-indigo-300">
-            <Lightbulb className="w-4 h-4 text-amber-500" />
+          <div className="glass-panel !border-x-0 !border-b-0 px-4 py-2.5 flex items-center justify-center gap-2 text-xs font-bold text-indigo-700">
+            <Lightbulb className="w-4 h-4 text-amber-500 shrink-0" />
             <span className="truncate max-w-[90%]">{todayTip}</span>
           </div>
         </header>
 
         {/* NAVEGAÇÃO DE TABS */}
         <div className="max-w-7xl mx-auto px-4 mt-6 relative z-10 no-print">
-          <div className="flex gap-2 p-1.5 glass-card rounded-2xl overflow-x-auto hide-scrollbar">
-            <button onClick={() => setActiveTab('dashboard')} className={`flex-1 min-w-[100px] py-3 px-4 text-xs font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 ${activeTab === 'dashboard' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 hover:bg-black/5'}`}><LayoutDashboard className="w-4 h-4" /> Resumo</button>
-            <button onClick={() => setActiveTab('extrato')} className={`flex-1 min-w-[100px] py-3 px-4 text-xs font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 ${activeTab === 'extrato' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 hover:bg-black/5'}`}><ListOrdered className="w-4 h-4" /> Extrato</button>
-            <button onClick={() => setActiveTab('metas')} className={`flex-1 min-w-[100px] py-3 px-4 text-xs font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 ${activeTab === 'metas' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 hover:bg-black/5'}`}><Target className="w-4 h-4" /> Orçamento</button>
-            <button onClick={() => setActiveTab('simulador')} className={`flex-1 min-w-[100px] py-3 px-4 text-xs font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 ${activeTab === 'simulador' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 hover:bg-black/5'}`}><TrendingUp className="w-4 h-4" /> Evolução</button>
+          <div className="flex gap-2 p-1.5 glass-card rounded-[1.2rem] overflow-x-auto hide-scrollbar">
+            <button onClick={() => setActiveTab('dashboard')} className={`flex-1 min-w-[100px] py-3 px-4 text-xs font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 ${activeTab === 'dashboard' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 hover:bg-black/5 dark:hover:bg-white/10'}`}><LayoutDashboard className="w-4 h-4" /> Resumo</button>
+            <button onClick={() => setActiveTab('extrato')} className={`flex-1 min-w-[100px] py-3 px-4 text-xs font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 ${activeTab === 'extrato' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 hover:bg-black/5 dark:hover:bg-white/10'}`}><ListOrdered className="w-4 h-4" /> Extrato</button>
+            <button onClick={() => setActiveTab('metas')} className={`flex-1 min-w-[100px] py-3 px-4 text-xs font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 ${activeTab === 'metas' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 hover:bg-black/5 dark:hover:bg-white/10'}`}><Target className="w-4 h-4" /> Orçamento</button>
+            <button onClick={() => setActiveTab('simulador')} className={`flex-1 min-w-[100px] py-3 px-4 text-xs font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 ${activeTab === 'simulador' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 hover:bg-black/5 dark:hover:bg-white/10'}`}><TrendingUp className="w-4 h-4" /> Evolução</button>
           </div>
         </div>
 
@@ -1476,79 +1533,79 @@ export default function App() {
                   {nativeInsights.insights.length > 0 && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {nativeInsights.insights.map((insight, idx) => (
-                        <div key={idx} className="glass-card !bg-indigo-50/80 !border-indigo-200 p-5 rounded-2xl flex items-start gap-4">
-                          <div className="p-2.5 bg-white rounded-full shadow-sm"><Info className="w-5 h-5 text-indigo-600" /></div>
-                          <p className="text-sm font-black text-indigo-900 leading-tight mt-1">{insight}</p>
+                        <div key={idx} className="glass-panel !bg-indigo-50/80 !border-indigo-200 p-4 sm:p-5 rounded-2xl flex items-start gap-4">
+                          <div className="p-2 sm:p-2.5 glass-card rounded-full shrink-0"><Info className="w-5 h-5 text-indigo-600" /></div>
+                          <p className="text-xs sm:text-sm font-black text-indigo-900 leading-tight mt-1">{insight}</p>
                         </div>
                       ))}
                     </div>
                   )}
 
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-                    <div className="glass-card rounded-[2rem] p-8 flex flex-col col-span-2 md:col-span-1 relative overflow-hidden group hover:!border-indigo-300 transition-all duration-300">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5">
+                    <div className="glass-card rounded-[2rem] p-6 sm:p-8 flex flex-col relative overflow-hidden group hover:!border-indigo-300 transition-all duration-300">
                       <div className="flex justify-between items-start z-10">
                         <span className="text-slate-600 font-black text-xs tracking-widest uppercase">Saldo Real</span>
-                        <span className="glass-panel text-slate-700 text-[10px] px-2.5 py-1 rounded-lg font-black uppercase tracking-widest border border-slate-300/50">Mês Atual</span>
+                        <span className="glass-panel text-slate-600 text-[10px] px-2.5 py-1 rounded-lg font-black uppercase tracking-widest">Mês Atual</span>
                       </div>
-                      <span className={`text-4xl md:text-5xl font-black mt-3 z-10 tracking-tight ${realBalance >= 0 ? 'text-slate-900' : 'text-rose-600'}`}>
+                      <span className={`text-4xl font-black mt-3 z-10 tracking-tight break-words whitespace-normal ${realBalance >= 0 ? 'text-slate-900' : 'text-rose-600'}`}>
                         {formatCurrency(realBalance)}
                       </span>
-                      <div className="mt-auto pt-5 border-t border-slate-200/80 text-xs font-black flex justify-between items-center z-10">
-                        <span className="text-slate-500 uppercase tracking-wider text-[10px]">Previsto</span>
-                        <span className={expectedBalance >= 0 ? 'text-slate-800' : 'text-rose-600'}>{formatCurrency(expectedBalance)}</span>
+                      <div className="mt-auto pt-5 border-t border-slate-200/50 text-xs font-black flex justify-between items-center z-10 gap-2">
+                        <span className="text-slate-500 uppercase tracking-wider text-[10px] shrink-0">Previsto</span>
+                        <span className={`break-words ${expectedBalance >= 0 ? 'text-slate-700' : 'text-rose-600'}`}>{formatCurrency(expectedBalance)}</span>
                       </div>
                     </div>
 
-                    <div className="glass-card rounded-[2rem] p-8 flex flex-col justify-between hover:!border-emerald-300 transition-all duration-300">
+                    <div className="glass-card rounded-[2rem] p-6 sm:p-8 flex flex-col justify-between hover:!border-emerald-300 transition-all duration-300">
                       <div className="flex items-center gap-2 text-slate-600 font-black text-xs uppercase tracking-widest">
-                        <div className="p-2 bg-emerald-100 rounded-xl border border-emerald-200"><ArrowUpCircle className="w-5 h-5 text-emerald-600" /></div> Entradas
+                        <div className="p-2 bg-emerald-50 rounded-xl border border-emerald-100"><ArrowUpCircle className="w-5 h-5 text-emerald-600" /></div> Entradas
                       </div>
-                      <span className="text-3xl md:text-4xl font-black text-slate-900 mt-5 tracking-tight">{formatCurrency(income)}</span>
+                      <span className="text-3xl xl:text-4xl font-black text-slate-900 mt-5 tracking-tight break-words">{formatCurrency(income)}</span>
                     </div>
 
-                    <div className="glass-card rounded-[2rem] p-8 flex flex-col relative justify-between hover:!border-rose-300 transition-all duration-300">
+                    <div className="glass-card rounded-[2rem] p-6 sm:p-8 flex flex-col relative justify-between hover:!border-rose-300 transition-all duration-300">
                       <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-2 text-slate-600 font-black text-xs uppercase tracking-widest">
-                          <div className="p-2 bg-rose-100 rounded-xl border border-rose-200"><ArrowDownCircle className="w-5 h-5 text-rose-600" /></div> Gastos
+                        <div className="flex items-center gap-2 text-slate-600 font-black text-xs uppercase tracking-widest shrink-0">
+                          <div className="p-2 bg-rose-50 rounded-xl border border-rose-100"><ArrowDownCircle className="w-5 h-5 text-rose-600" /></div> Gastos
                         </div>
-                        {income > 0 && <span className="text-[10px] font-black text-rose-600 bg-rose-100 px-2.5 py-1 rounded-lg border border-rose-200 uppercase">{budgetPercentage.toFixed(0)}% Usado</span>}
+                        {income > 0 && <span className="text-[10px] font-black text-rose-600 bg-rose-50 px-2 py-1 rounded-lg border border-rose-200 uppercase whitespace-nowrap ml-2">{budgetPercentage.toFixed(0)}% Usado</span>}
                       </div>
-                      <span className="text-3xl md:text-4xl font-black text-slate-900 mt-5 tracking-tight">{formatCurrency(expense)}</span>
-                      <div className="w-full glass-panel h-2.5 rounded-full mt-6 overflow-hidden shadow-inner">
+                      <span className="text-3xl xl:text-4xl font-black text-slate-900 mt-5 tracking-tight break-words">{formatCurrency(expense)}</span>
+                      <div className="w-full glass-panel h-2.5 rounded-full mt-6 overflow-hidden shadow-inner shrink-0">
                         <div className={`h-full rounded-full transition-all duration-1000 ${budgetPercentage > 85 ? 'bg-rose-500' : budgetPercentage > 60 ? 'bg-amber-400' : 'bg-emerald-500'}`} style={{ width: `${budgetPercentage}%` }}></div>
                       </div>
                     </div>
 
-                    <div className="glass-card !bg-indigo-50/80 rounded-[2rem] p-8 flex flex-col col-span-2 md:col-span-1 justify-between">
+                    <div className="glass-card !bg-indigo-50/80 rounded-[2rem] p-6 sm:p-8 flex flex-col col-span-1 sm:col-span-2 xl:col-span-1 justify-between">
                       <div className="flex items-center gap-2 text-indigo-800 font-black text-xs uppercase tracking-widest">
-                        <div className="p-2 bg-white rounded-xl shadow-sm border border-indigo-100"><TrendingUp className="w-5 h-5 text-indigo-600" /></div> Investimentos
+                        <div className="p-2 glass-card rounded-xl"><TrendingUp className="w-5 h-5 text-indigo-600" /></div> Investimentos
                       </div>
-                      <div className="flex flex-col mt-5">
-                        <div className="flex justify-between items-end mb-4">
-                          <span className="text-xs font-black text-indigo-500 uppercase tracking-widest">Neste Mês</span>
-                          <span className="text-2xl font-black text-indigo-900 tracking-tight">{formatCurrency(investment)}</span>
+                      <div className="flex flex-col mt-5 overflow-hidden">
+                        <div className="flex justify-between items-end mb-4 gap-2">
+                          <span className="text-xs font-black text-indigo-500 uppercase tracking-widest shrink-0">Neste Mês</span>
+                          <span className="text-2xl font-black text-indigo-900 tracking-tight break-words text-right">{formatCurrency(investment)}</span>
                         </div>
-                        <div className="flex justify-between items-end pt-4 border-t border-indigo-200/50">
-                          <span className="text-xs font-black text-indigo-600 uppercase tracking-widest">Acumulado</span>
-                          <span className="text-2xl md:text-3xl font-black text-indigo-700 tracking-tight">{formatCurrency(accumulatedInvestment)}</span>
+                        <div className="flex justify-between items-end pt-4 border-t border-indigo-200/50 gap-2">
+                          <span className="text-xs font-black text-indigo-600 uppercase tracking-widest shrink-0">Acumulado</span>
+                          <span className="text-xl lg:text-2xl font-black text-indigo-700 tracking-tight break-words text-right">{formatCurrency(accumulatedInvestment)}</span>
                         </div>
                       </div>
                     </div>
                   </div>
                   
-                  <div className="glass-card rounded-[2rem] p-8 flex flex-col md:flex-row justify-between items-center gap-6">
+                  <div className="glass-card rounded-[2rem] p-6 sm:p-8 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
                     <div>
-                      <h3 className="font-black text-2xl text-slate-900 mb-2">Acesso Rápido</h3>
-                      <p className="text-base font-bold text-slate-500">Faça a gestão dos seus cartões e analise os seus gastos no gráfico.</p>
+                      <h3 className="font-black text-xl sm:text-2xl text-slate-900 mb-2">Acesso Rápido</h3>
+                      <p className="text-sm sm:text-base font-bold text-slate-500">Faça a gestão dos seus cartões e analise os seus gastos no gráfico.</p>
                     </div>
-                    <div className="flex gap-4 w-full md:w-auto flex-wrap justify-center md:justify-end">
-                      <button onClick={() => setShowCardsModal(true)} className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-slate-900 hover:bg-black text-white px-8 py-4 rounded-2xl text-sm font-black uppercase tracking-widest transition-all shadow-xl active:scale-95">
+                    <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+                      <button onClick={() => setShowCardsModal(true)} className="flex-1 lg:flex-none flex items-center justify-center gap-2 bg-slate-900 hover:bg-black text-white px-6 py-4 rounded-2xl text-sm font-black uppercase tracking-widest transition-all shadow-xl active:scale-95 w-full sm:w-auto">
                         <CreditCard className="w-5 h-5" /> Cartões
                       </button>
-                      <button onClick={() => setShowChartModal(true)} className="flex-1 md:flex-none flex items-center justify-center gap-2 glass-panel border border-slate-300 text-indigo-700 px-8 py-4 rounded-2xl text-sm font-black uppercase tracking-widest hover:!bg-indigo-50 transition-all shadow-md active:scale-95">
+                      <button onClick={() => setShowChartModal(true)} className="flex-1 lg:flex-none flex items-center justify-center gap-2 glass-panel text-indigo-700 px-6 py-4 rounded-2xl text-sm font-black uppercase tracking-widest hover:!bg-indigo-50 transition-all shadow-sm active:scale-95 w-full sm:w-auto">
                         <PieChart className="w-5 h-5" /> Gráfico
                       </button>
-                      <button onClick={() => setShowPurchaseModal(true)} className="flex-1 md:flex-none flex items-center justify-center gap-2 glass-panel border border-purple-300 text-purple-700 px-8 py-4 rounded-2xl text-sm font-black uppercase tracking-widest hover:!bg-purple-50 transition-all shadow-md active:scale-95">
+                      <button onClick={() => setShowPurchaseModal(true)} className="flex-1 lg:flex-none flex items-center justify-center gap-2 glass-panel text-purple-700 px-6 py-4 rounded-2xl text-sm font-black uppercase tracking-widest hover:!bg-purple-50 transition-all shadow-sm active:scale-95 w-full sm:w-auto">
                         <ShoppingBag className="w-5 h-5" /> ✨ Consultor
                       </button>
                     </div>
@@ -1561,29 +1618,29 @@ export default function App() {
                   <div className="flex flex-col md:flex-row gap-4">
                     <div className="relative flex-1 group">
                       <Search className="absolute left-5 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-500 group-focus-within:text-indigo-600 transition-colors" />
-                      <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Pesquisar transações..." className="glass-input w-full pl-14 pr-5 py-4 rounded-[1.5rem] outline-none focus:!border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all font-black text-lg text-slate-900" />
+                      <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Pesquisar transações..." className="glass-input w-full pl-14 pr-5 py-4 rounded-[1.5rem] outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all font-black text-lg shadow-sm" />
                     </div>
                     
                     <div className="flex gap-3">
-                      <button onClick={handleGeneratePDF} disabled={isGeneratingPDF} className={`flex-1 md:flex-none flex items-center justify-center p-4 glass-card text-slate-700 rounded-[1.5rem] hover:!bg-slate-100 transition-all shadow-md active:scale-95 ${isGeneratingPDF ? 'opacity-50 cursor-not-allowed' : ''}`} title="Gerar Relatório PDF / Imprimir">
-                        {isGeneratingPDF ? <Loader2 className="w-6 h-6 animate-spin text-indigo-600" /> : <Printer className="w-6 h-6 text-slate-700" />}
+                      <button onClick={handleGeneratePDF} disabled={isGeneratingPDF} className={`flex-1 md:flex-none flex items-center justify-center p-4 glass-card text-slate-700 rounded-[1.5rem] hover:bg-black/5 transition-all shadow-sm active:scale-95 ${isGeneratingPDF ? 'opacity-50 cursor-not-allowed' : ''}`} title="Gerar Relatório PDF / Imprimir">
+                        {isGeneratingPDF ? <Loader2 className="w-6 h-6 animate-spin text-indigo-600" /> : <Printer className="w-6 h-6" />}
                       </button>
-                      <button onClick={handleExportCSV} className="flex-1 md:flex-none flex items-center justify-center p-4 glass-card text-emerald-600 rounded-[1.5rem] hover:!bg-emerald-50 transition-all shadow-md active:scale-95" title="Exportar para Tabela Excel (XLS)">
+                      <button onClick={handleExportCSV} className="flex-1 md:flex-none flex items-center justify-center p-4 glass-card text-emerald-600 rounded-[1.5rem] hover:bg-emerald-50 transition-all shadow-sm active:scale-95" title="Exportar para Tabela Excel (XLS)">
                         <FileSpreadsheet className="w-6 h-6" />
                       </button>
-                      <button onClick={generateAiInsights} className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white p-4 rounded-[1.5rem] transition-all shadow-xl active:scale-95" title="Insights com IA">
+                      <button onClick={generateAiInsights} className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-[1.5rem] transition-all shadow-md active:scale-95" title="Insights com IA">
                         <Sparkles className="w-6 h-6" />
                       </button>
                     </div>
                   </div>
 
                   <div className="glass-card rounded-[2rem] overflow-hidden">
-                    <div className="p-6 md:p-8 border-b border-slate-200/80 flex flex-col md:flex-row justify-between items-start md:items-center gap-5 glass-panel">
-                      <h2 className="text-xl font-black text-slate-900 flex items-center gap-3">
-                        <div className="p-2.5 bg-indigo-100/80 rounded-xl"><ListOrdered className="w-6 h-6 text-indigo-600" /></div>
+                    <div className="p-5 sm:p-6 md:p-8 border-b border-slate-200/50 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sm:gap-5 glass-panel !border-x-0 !border-t-0 !rounded-none">
+                      <h2 className="text-lg sm:text-xl font-black text-slate-900 flex items-center gap-3 w-full sm:w-auto">
+                        <div className="p-2 sm:p-2.5 bg-indigo-100 rounded-xl shrink-0"><ListOrdered className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-600" /></div>
                         Extrato do Mês
                       </h2>
-                      <button onClick={() => setShowCardsModal(true)} className="flex items-center gap-2 bg-slate-900 text-white px-5 py-3 rounded-xl text-sm font-black uppercase tracking-widest hover:bg-black transition-all shadow-md active:scale-95">
+                      <button onClick={() => setShowCardsModal(true)} className="flex items-center justify-center w-full md:w-auto gap-2 bg-slate-900 text-white px-5 py-3 rounded-xl text-sm font-black uppercase tracking-widest hover:bg-black transition-all shadow-md active:scale-95">
                         <CreditCard className="w-5 h-5" /> Cartões
                       </button>
                     </div>
@@ -1600,29 +1657,29 @@ export default function App() {
                           {filteredTransactions.map((t) => {
                             const isPending = t.status === 'pending';
                             return (
-                              <li key={t.id} className={`p-6 md:p-8 hover:bg-black/5 flex flex-col sm:flex-row sm:items-center justify-between gap-5 transition-all duration-200 ${editingId === t.id ? 'bg-amber-50/80' : ''} ${isPending ? 'opacity-80 border-l-4 border-l-amber-400' : 'border-l-4 border-l-transparent'}`}>
-                                <div className="flex items-center gap-5 overflow-hidden w-full">
-                                  <button onClick={() => toggleStatus(t.id)} className={`p-3 rounded-2xl shrink-0 transition-transform active:scale-90 shadow-sm border ${isPending ? 'bg-white border-amber-300 text-amber-500 hover:bg-amber-50' : 'bg-white border-emerald-300 text-emerald-600 hover:bg-emerald-50'}`} title={isPending ? "Confirmar Pagamento" : "Tornar Pendente"}>
-                                    {isPending ? <AlertCircle className="w-7 h-7" /> : <CheckCircle2 className="w-7 h-7" />}
+                              <li key={t.id} className={`p-5 sm:p-6 md:p-8 hover:bg-black/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-5 transition-all duration-200 ${editingId === t.id ? 'bg-amber-50/50' : ''} ${isPending ? 'opacity-80 border-l-4 border-l-amber-400' : 'border-l-4 border-l-transparent'}`}>
+                                <div className="flex items-center gap-4 sm:gap-5 overflow-hidden w-full">
+                                  <button onClick={() => toggleStatus(t.id)} className={`p-2.5 sm:p-3 rounded-2xl shrink-0 transition-transform active:scale-90 shadow-sm border ${isPending ? 'glass-card border-amber-300 text-amber-500 hover:bg-amber-50' : 'glass-card border-emerald-300 text-emerald-600 hover:bg-emerald-50'}`} title={isPending ? "Confirmar Pagamento" : "Tornar Pendente"}>
+                                    {isPending ? <AlertCircle className="w-6 h-6 sm:w-7 sm:h-7" /> : <CheckCircle2 className="w-6 h-6 sm:w-7 sm:h-7" />}
                                   </button>
                                   
                                   <div className="min-w-0 flex-1">
-                                    <p className={`font-black text-lg md:text-xl truncate tracking-tight ${isPending ? 'text-slate-500' : 'text-slate-900'}`}>{t.description}</p>
-                                    <div className="flex flex-wrap items-center gap-3 mt-2">
-                                      <span className={`px-2.5 py-1 rounded-lg uppercase tracking-widest text-[10px] font-black border ${t.type === 'expense' ? 'bg-rose-50 border-rose-200 text-rose-700' : t.type === 'income' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-indigo-50 border-indigo-200 text-indigo-700'}`}>{t.category}</span>
-                                      <span className="text-xs font-bold text-slate-500">{t.date.split('-').reverse().join('/')}</span>
-                                      {isPending && <span className="text-[10px] font-black text-amber-600 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200 uppercase tracking-widest">Pendente</span>}
+                                    <p className={`font-black text-base sm:text-lg md:text-xl truncate tracking-tight ${isPending ? 'text-slate-500' : 'text-slate-900'}`}>{t.description}</p>
+                                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1.5 sm:mt-2">
+                                      <span className={`px-2 py-1 rounded-lg uppercase tracking-widest text-[9px] sm:text-[10px] font-black border ${t.type === 'expense' ? 'bg-rose-50 border-rose-200 text-rose-700' : t.type === 'income' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-indigo-50 border-indigo-200 text-indigo-700'}`}>{t.category}</span>
+                                      <span className="text-[10px] sm:text-xs font-bold text-slate-500">{t.date.split('-').reverse().join('/')}</span>
+                                      {isPending && <span className="text-[9px] sm:text-[10px] font-black text-amber-600 bg-amber-50 px-2 py-1 rounded-lg border border-amber-200 uppercase tracking-widest">Pendente</span>}
                                     </div>
                                   </div>
                                 </div>
                                 
-                                <div className="flex flex-row items-center justify-between sm:justify-end gap-5 w-full sm:w-auto mt-4 sm:mt-0 pt-4 sm:pt-0 border-t sm:border-t-0 border-slate-200/50">
-                                  <span className={`font-black tracking-tight text-xl md:text-2xl ${t.type === 'income' ? 'text-emerald-600' : t.type === 'expense' ? 'text-rose-600' : 'text-indigo-600'} ${isPending ? 'opacity-60' : ''}`}>
+                                <div className="flex flex-row items-center justify-between sm:justify-end gap-3 sm:gap-5 w-full sm:w-auto mt-3 sm:mt-0 pt-3 sm:pt-0 border-t border-slate-200/50 sm:border-t-0">
+                                  <span className={`font-black tracking-tight text-lg sm:text-xl md:text-2xl break-words max-w-[150px] sm:max-w-[200px] md:max-w-none text-right ${t.type === 'income' ? 'text-emerald-600' : t.type === 'expense' ? 'text-rose-600' : 'text-indigo-600'} ${isPending ? 'opacity-60' : ''}`}>
                                     {t.type === 'income' ? '+' : '-'} {formatCurrency(t.amount)}
                                   </span>
-                                  <div className="flex items-center gap-2">
-                                    <button onClick={() => { handleEdit(t); setShowTransactionModal(true); }} className="p-3 text-slate-500 bg-white border border-slate-300 rounded-xl hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50 transition-all shadow-sm active:scale-95"><Edit className="w-5 h-5" /></button>
-                                    <button onClick={() => handleDelete(t.id)} className="p-3 text-slate-500 bg-white border border-slate-300 rounded-xl hover:border-rose-400 hover:text-rose-600 hover:bg-rose-50 transition-all shadow-sm active:scale-95"><Trash2 className="w-5 h-5" /></button>
+                                  <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                                    <button onClick={() => { handleEdit(t); setShowTransactionModal(true); }} className="p-2.5 sm:p-3 text-slate-500 glass-card rounded-xl hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50 transition-all shadow-sm active:scale-95"><Edit className="w-4 h-4 sm:w-5 sm:h-5" /></button>
+                                    <button onClick={() => handleDelete(t.id)} className="p-2.5 sm:p-3 text-slate-500 glass-card rounded-xl hover:border-rose-400 hover:text-rose-600 hover:bg-rose-50 transition-all shadow-sm active:scale-95"><Trash2 className="w-4 h-4 sm:w-5 sm:h-5" /></button>
                                   </div>
                                 </div>
                               </li>
@@ -1636,20 +1693,20 @@ export default function App() {
               )}
 
               {activeTab === 'metas' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in fade-in slide-in-from-bottom-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 animate-in fade-in slide-in-from-bottom-4">
                   
                   {/* ORÇAMENTOS */}
-                  <div className="glass-card rounded-[2rem] p-8">
-                    <div className="flex justify-between items-center mb-6 border-b border-slate-200/50 pb-5">
-                      <h3 className="font-black text-2xl text-slate-900 flex items-center gap-3">
-                        <div className="p-2 bg-rose-100 rounded-xl border border-rose-200"><Target className="w-6 h-6 text-rose-600" /></div>
+                  <div className="glass-card rounded-[2rem] p-6 sm:p-8">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 border-b border-slate-200/50 pb-5 gap-4">
+                      <h3 className="font-black text-xl sm:text-2xl text-slate-900 flex items-center gap-3">
+                        <div className="p-2 bg-rose-100 rounded-xl border border-rose-200 shrink-0"><Target className="w-5 h-5 sm:w-6 sm:h-6 text-rose-600" /></div>
                         Orçamentos
                       </h3>
-                      <div className="flex gap-2">
-                        <button onClick={handleGenerateAiBudget} className="text-[10px] font-black uppercase tracking-widest text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-2 rounded-xl transition-colors shadow-sm flex items-center gap-1">
-                          <Sparkles className="w-3.5 h-3.5"/> ✨ Orçamento IA
+                      <div className="flex gap-2 w-full sm:w-auto">
+                        <button onClick={handleGenerateAiBudget} className="flex-1 sm:flex-none justify-center text-[10px] font-black uppercase tracking-widest text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-2.5 sm:py-2 rounded-xl transition-colors shadow-sm flex items-center gap-1">
+                          <Sparkles className="w-3.5 h-3.5"/> ✨ <span className="hidden sm:inline">Orçamento</span> IA
                         </button>
-                        <button onClick={openNewBudget} className="text-xs font-black uppercase tracking-widest text-white bg-rose-600 px-4 py-2 rounded-xl hover:bg-rose-700 transition-colors shadow-md shadow-rose-200">
+                        <button onClick={openNewBudget} className="flex-1 sm:flex-none justify-center text-xs font-black uppercase tracking-widest text-white bg-rose-600 px-4 py-2.5 sm:py-2 rounded-xl hover:bg-rose-700 transition-colors shadow-md shadow-rose-200">
                           + Criar
                         </button>
                       </div>
@@ -1669,20 +1726,20 @@ export default function App() {
                           const isOver = catSpent > catLimit;
 
                           return (
-                            <div key={cat} className="space-y-3 glass-panel p-5 rounded-2xl border border-slate-200/50 group relative">
+                            <div key={cat} className="space-y-3 glass-panel p-5 rounded-2xl group relative shadow-sm">
                               <div className="flex justify-between items-center">
                                 <span className="font-black text-lg text-slate-800">{cat}</span>
-                                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <button onClick={() => openEditBudget(cat, catLimit)} className="p-1.5 text-slate-400 hover:text-amber-600 bg-white rounded-lg border border-slate-200 shadow-sm"><Edit className="w-3.5 h-3.5" /></button>
-                                  <button onClick={() => handleDeleteBudget(cat)} className="p-1.5 text-slate-400 hover:text-rose-600 bg-white rounded-lg border border-slate-200 shadow-sm"><Trash2 className="w-3.5 h-3.5" /></button>
+                                <div className="flex items-center gap-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button onClick={() => openEditBudget(cat, catLimit)} className="p-1.5 text-slate-400 hover:text-amber-600 glass-card rounded-lg shadow-sm"><Edit className="w-3.5 h-3.5" /></button>
+                                  <button onClick={() => handleDeleteBudget(cat)} className="p-1.5 text-slate-400 hover:text-rose-600 glass-card rounded-lg shadow-sm"><Trash2 className="w-3.5 h-3.5" /></button>
                                 </div>
                               </div>
                               <div>
-                                <div className="flex justify-between items-end mb-2">
-                                  <span className={`text-sm font-black ${isOver ? 'text-rose-600' : 'text-slate-600'}`}>{formatCurrency(catSpent)} <span className="font-bold text-slate-400">/ {formatCurrency(catLimit)}</span></span>
-                                  <span className="text-xs font-black text-slate-500">{catPercentage.toFixed(0)}%</span>
+                                <div className="flex justify-between items-end mb-2 gap-2">
+                                  <span className={`text-sm font-black break-words ${isOver ? 'text-rose-600' : 'text-slate-600'}`}>{formatCurrency(catSpent)} <span className="font-bold text-slate-400">/ {formatCurrency(catLimit)}</span></span>
+                                  <span className="text-xs font-black text-slate-500 shrink-0">{catPercentage.toFixed(0)}%</span>
                                 </div>
-                                <div className="w-full h-2.5 glass-panel rounded-full overflow-hidden shadow-inner border border-slate-200/50">
+                                <div className="w-full h-2.5 glass-card rounded-full overflow-hidden shadow-inner">
                                   <div className={`h-full transition-all duration-500 rounded-full ${isOver ? 'bg-rose-500' : catPercentage > 80 ? 'bg-amber-400' : 'bg-emerald-500'}`} style={{ width: `${catPercentage}%` }}></div>
                                 </div>
                               </div>
@@ -1694,13 +1751,13 @@ export default function App() {
                   </div>
 
                   {/* METAS */}
-                  <div className="glass-card rounded-[2rem] p-8">
-                    <div className="flex justify-between items-center mb-6 border-b border-slate-200/50 pb-5">
-                      <h3 className="font-black text-2xl text-slate-900 flex items-center gap-3">
-                        <div className="p-2 bg-emerald-100 rounded-xl border border-emerald-200"><Trophy className="w-6 h-6 text-emerald-600" /></div>
+                  <div className="glass-card rounded-[2rem] p-6 sm:p-8">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 border-b border-slate-200/50 pb-5 gap-4">
+                      <h3 className="font-black text-xl sm:text-2xl text-slate-900 flex items-center gap-3">
+                        <div className="p-2 bg-emerald-100 rounded-xl border border-emerald-200 shrink-0"><Trophy className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600" /></div>
                         Metas & Sonhos
                       </h3>
-                      <button onClick={openNewGoal} className="text-xs font-black uppercase tracking-widest text-white bg-emerald-600 px-4 py-2 rounded-xl hover:bg-emerald-700 transition-colors shadow-md shadow-emerald-200">
+                      <button onClick={openNewGoal} className="w-full sm:w-auto text-xs font-black uppercase tracking-widest text-white bg-emerald-600 px-4 py-2.5 sm:py-2 rounded-xl hover:bg-emerald-700 transition-colors shadow-md shadow-emerald-200">
                         + Criar
                       </button>
                     </div>
@@ -1717,19 +1774,19 @@ export default function App() {
                           const isComplete = goal.current >= goal.target;
                           
                           return (
-                            <div key={goal.id} className="glass-panel p-6 rounded-2xl border border-slate-200 relative group shadow-sm">
-                              <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={() => openEditGoal(goal)} className="p-2 text-slate-400 hover:text-amber-600 bg-white rounded-lg border border-slate-200 shadow-sm"><Edit className="w-4 h-4"/></button>
+                            <div key={goal.id} className="glass-panel p-6 rounded-2xl relative group shadow-sm">
+                              <div className="absolute top-4 right-4 flex gap-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button onClick={() => openEditGoal(goal)} className="p-2 text-slate-400 hover:text-amber-600 glass-card rounded-lg shadow-sm"><Edit className="w-4 h-4"/></button>
                                 <button onClick={() => {
                                   showConfirm('Excluir', `Deseja excluir a meta "${goal.name}"?`, () => {
                                     const newGoals = goals.filter(g => g.id !== goal.id);
                                     setGoals(newGoals);
                                     saveCloudConfig({ goals: newGoals });
                                   });
-                                }} className="p-2 text-slate-400 hover:text-rose-600 bg-white rounded-lg border border-slate-200 shadow-sm"><Trash2 className="w-4 h-4"/></button>
+                                }} className="p-2 text-slate-400 hover:text-rose-600 glass-card rounded-lg shadow-sm"><Trash2 className="w-4 h-4"/></button>
                               </div>
                               
-                              <h4 className="font-black text-slate-900 text-lg mb-2 flex items-center gap-2">
+                              <h4 className="font-black text-slate-900 text-lg mb-2 flex items-center gap-2 mr-16 sm:mr-0">
                                 {goal.name} {isComplete && '🎉'}
                                 {!isComplete && (
                                   <button onClick={() => handleGenerateGoalPlan(goal)} disabled={isPlanningGoal} className="text-[10px] font-black uppercase tracking-widest text-indigo-600 bg-indigo-100 hover:bg-indigo-200 px-2 py-1 rounded-md transition-colors flex items-center gap-1">
@@ -1737,11 +1794,11 @@ export default function App() {
                                   </button>
                                 )}
                               </h4>
-                              <div className="flex justify-between items-end mb-3">
-                                <span className="text-sm font-black text-emerald-600">{formatCurrency(goal.current)} <span className="text-slate-500 font-bold">de {formatCurrency(goal.target)}</span></span>
-                                <span className="text-xs font-black text-slate-600">{percentage.toFixed(1)}%</span>
+                              <div className="flex justify-between items-end mb-3 gap-2">
+                                <span className="text-sm font-black break-words text-emerald-600">{formatCurrency(goal.current)} <span className="text-slate-500 font-bold">de {formatCurrency(goal.target)}</span></span>
+                                <span className="text-xs font-black text-slate-600 shrink-0">{percentage.toFixed(1)}%</span>
                               </div>
-                              <div className="w-full h-3 glass-panel rounded-full overflow-hidden mb-5 shadow-inner border border-slate-200/50">
+                              <div className="w-full h-3 glass-card rounded-full overflow-hidden mb-5 shadow-inner">
                                 <div className="h-full bg-emerald-500 transition-all duration-1000 rounded-full" style={{ width: `${percentage}%` }}></div>
                               </div>
                               {!isComplete && (
@@ -1755,7 +1812,7 @@ export default function App() {
                                       saveCloudConfig({ goals: newGoals });
                                     }
                                   });
-                                }} className="w-full py-3 bg-white border border-slate-300 text-xs font-black uppercase tracking-widest text-slate-700 hover:text-emerald-700 hover:border-emerald-300 rounded-xl transition-colors shadow-sm">
+                                }} className="w-full py-3 glass-card text-xs font-black uppercase tracking-widest text-slate-700 hover:text-emerald-600 hover:border-emerald-300 rounded-xl transition-colors shadow-sm">
                                   + Adicionar Valor
                                 </button>
                               )}
@@ -1769,13 +1826,13 @@ export default function App() {
               )}
 
               {activeTab === 'simulador' && (
-                <div className="glass-card rounded-[2rem] p-8 md:p-10 animate-in fade-in slide-in-from-bottom-4">
-                  <h3 className="font-black text-2xl text-slate-900 flex items-center gap-3 mb-10 border-b border-slate-200/50 pb-5">
-                    <div className="p-2 bg-indigo-100 rounded-xl border border-indigo-200"><TrendingUp className="w-6 h-6 text-indigo-600" /></div>
+                <div className="glass-card rounded-[2rem] p-6 sm:p-8 md:p-10 animate-in fade-in slide-in-from-bottom-4">
+                  <h3 className="font-black text-xl sm:text-2xl text-slate-900 flex items-center gap-3 mb-8 sm:mb-10 border-b border-slate-200/50 pb-5">
+                    <div className="p-2 bg-indigo-100 rounded-xl border border-indigo-200 shrink-0"><TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-600" /></div>
                     Simulador de Investimentos
                   </h3>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
                     <div className="space-y-8">
                       <div>
                         <label className="block text-xs font-black text-slate-600 uppercase tracking-widest mb-3 flex justify-between">Valor Inicial <span className="text-indigo-600">{formatCurrency(simInitial)}</span></label>
@@ -1788,7 +1845,7 @@ export default function App() {
                       <div>
                         <label className="block text-xs font-black text-slate-600 uppercase tracking-widest mb-3 flex justify-between">Taxa de Juro Mensal (%) <span className="text-indigo-600">{simRate.toFixed(2)}%</span></label>
                         <input type="range" min="0.1" max="2.0" step="0.1" value={simRate} onChange={(e) => setSimRate(Number(e.target.value))} className="w-full accent-indigo-600 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer" />
-                        <p className="text-xs text-slate-500 font-bold mt-2 glass-panel p-2 rounded-lg border border-slate-200/50">Ex: Poupança ~0.5%, Tesouro/CDB ~0.8%, FIIs ~1.0%</p>
+                        <p className="text-xs text-slate-500 font-bold mt-2 glass-panel p-2 rounded-lg">Ex: Poupança ~0.5%, Tesouro/CDB ~0.8%, FIIs ~1.0%</p>
                       </div>
                       <div>
                         <label className="block text-xs font-black text-slate-600 uppercase tracking-widest mb-3 flex justify-between">Tempo <span className="text-indigo-600">{simYears} {simYears === 1 ? 'Ano' : 'Anos'}</span></label>
@@ -1796,21 +1853,21 @@ export default function App() {
                       </div>
                     </div>
 
-                    <div className="bg-slate-900 rounded-[2rem] p-10 flex flex-col justify-center items-center text-center relative overflow-hidden shadow-2xl shadow-slate-900/40 border border-slate-700">
+                    <div className="bg-slate-900 rounded-[2rem] p-6 sm:p-10 flex flex-col justify-center items-center text-center relative overflow-hidden shadow-xl border border-slate-800 mt-6 lg:mt-0">
                       <div className="absolute inset-0 bg-grid-pattern opacity-20 mask-radial"></div>
                       <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/10 to-purple-500/10 pointer-events-none"></div>
                       
-                      <h4 className="text-indigo-300 font-black uppercase tracking-widest text-xs mb-3 relative z-10">Valor Final Estimado</h4>
-                      <p className="text-5xl md:text-6xl font-black text-white tracking-tight relative z-10 mb-8 drop-shadow-lg">{formatCurrency(simFutureValue)}</p>
+                      <h4 className="text-indigo-300 font-black uppercase tracking-widest text-[10px] sm:text-xs mb-3 relative z-10">Valor Final Estimado</h4>
+                      <p className="text-4xl sm:text-5xl md:text-6xl font-black text-white tracking-tight relative z-10 mb-6 sm:mb-8 drop-shadow-lg break-words px-2 w-full">{formatCurrency(simFutureValue)}</p>
                       
-                      <div className="w-full bg-slate-800/80 backdrop-blur-md rounded-2xl p-5 grid grid-cols-2 gap-5 relative z-10 border border-slate-700">
+                      <div className="w-full bg-slate-800/80 backdrop-blur-md rounded-2xl p-4 sm:p-5 grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 relative z-10 border border-slate-700">
                         <div>
-                          <p className="text-slate-400 text-[10px] uppercase font-black tracking-widest mb-2">Total Investido</p>
-                          <p className="text-white font-black text-lg">{formatCurrency(simInitial + (simMonthly * simYears * 12))}</p>
+                          <p className="text-slate-400 text-[9px] sm:text-[10px] uppercase font-black tracking-widest mb-1 sm:mb-2">Total Investido</p>
+                          <p className="text-white font-black text-base sm:text-lg break-words">{formatCurrency(simInitial + (simMonthly * simYears * 12))}</p>
                         </div>
                         <div>
-                          <p className="text-emerald-400 text-[10px] uppercase font-black tracking-widest mb-2">Juros Ganhos</p>
-                          <p className="text-emerald-400 font-black text-lg">+{formatCurrency(simFutureValue - (simInitial + (simMonthly * simYears * 12)))}</p>
+                          <p className="text-emerald-400 text-[9px] sm:text-[10px] uppercase font-black tracking-widest mb-1 sm:mb-2">Juros Ganhos</p>
+                          <p className="text-emerald-400 font-black text-base sm:text-lg break-words">+{formatCurrency(simFutureValue - (simInitial + (simMonthly * simYears * 12)))}</p>
                         </div>
                       </div>
                     </div>
@@ -1821,9 +1878,10 @@ export default function App() {
           )}
         </main>
 
+        {/* BOTÃO ADICIONAR (SÓLIDO) */}
         <button 
           onClick={() => { resetForm(); setShowTransactionModal(true); }}
-          className="fixed bottom-8 right-8 md:bottom-12 md:right-12 w-16 h-16 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full flex items-center justify-center shadow-2xl shadow-indigo-600/40 text-white hover:scale-110 active:scale-95 transition-all z-40 group border-4 border-white/20 no-print"
+          className="fixed bottom-6 right-6 md:bottom-10 md:right-10 w-16 h-16 bg-indigo-600 rounded-full flex items-center justify-center shadow-xl shadow-indigo-600/40 text-white hover:bg-indigo-700 active:scale-95 transition-all z-[90] group no-print"
           title="Novo Registo"
         >
           <Plus className="w-8 h-8 group-hover:rotate-90 transition-transform duration-300" />
@@ -1831,21 +1889,21 @@ export default function App() {
 
         {/* MODAL DE ORÇAMENTOS */}
         {showBudgetModal && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-50">
-            <div className="glass-card rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden flex flex-col border border-slate-200 animate-in zoom-in-95">
-              <div className="p-6 border-b border-slate-200/50 flex justify-between items-center glass-panel">
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-[100]">
+            <div className="glass-card rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden flex flex-col animate-in zoom-in-95">
+              <div className="p-6 border-b border-slate-200/50 flex justify-between items-center glass-panel !border-x-0 !border-t-0 !rounded-none">
                 <h3 className="font-black text-slate-900 flex items-center gap-3 text-xl tracking-tight">
                   <div className="p-2.5 bg-rose-100 rounded-xl"><Target className="w-6 h-6 text-rose-600" /></div> 
                   Orçamento
                 </h3>
-                <button onClick={() => setShowBudgetModal(false)} className="p-2 bg-white/50 hover:bg-white/80 rounded-xl transition-colors border border-slate-200/50"><X className="w-5 h-5 text-slate-600" /></button>
+                <button onClick={() => setShowBudgetModal(false)} className="p-2 glass-card hover:bg-slate-100 rounded-xl transition-colors"><X className="w-5 h-5 text-slate-600" /></button>
               </div>
               <div className="p-8">
                 <form onSubmit={handleSaveBudget} className="space-y-6">
                   <div>
                     <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Categoria</label>
                     <div className="relative">
-                      <select required value={budgetForm.category} onChange={e => setBudgetForm({...budgetForm, category: e.target.value})} className="glass-input w-full px-5 py-4 rounded-2xl outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 font-bold transition-all appearance-none text-slate-900">
+                      <select required value={budgetForm.category} onChange={e => setBudgetForm({...budgetForm, category: e.target.value})} className="glass-input w-full px-5 py-4 rounded-2xl outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 font-bold transition-all appearance-none">
                         <option value="" disabled>Selecione...</option>
                         {categories.expense.map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
@@ -1854,7 +1912,7 @@ export default function App() {
                   </div>
                   <div>
                     <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Limite Máximo (R$)</label>
-                    <input type="number" step="0.01" required value={budgetForm.limit} onChange={e => setBudgetForm({...budgetForm, limit: e.target.value})} placeholder="Ex: 500" className="glass-input w-full px-5 py-4 rounded-2xl outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 font-bold transition-all" />
+                    <input type="number" step="0.01" required value={budgetForm.limit} onChange={e => setBudgetForm({...budgetForm, limit: e.target.value})} placeholder="Ex: 500" className="glass-input w-full px-5 py-4 rounded-2xl outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 font-bold transition-all" />
                   </div>
                   <button type="submit" className="w-full py-4 bg-slate-900 hover:bg-black text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl transition-all active:scale-95">Salvar Orçamento</button>
                 </form>
@@ -1865,24 +1923,24 @@ export default function App() {
 
         {/* MODAL DE METAS */}
         {showGoalModal && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-50">
-            <div className="glass-card rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden flex flex-col border border-slate-200 animate-in zoom-in-95">
-              <div className="p-6 border-b border-slate-200/50 flex justify-between items-center glass-panel">
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-[100]">
+            <div className="glass-card rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden flex flex-col animate-in zoom-in-95">
+              <div className="p-6 border-b border-slate-200/50 flex justify-between items-center glass-panel !border-x-0 !border-t-0 !rounded-none">
                 <h3 className="font-black text-slate-900 flex items-center gap-3 text-xl tracking-tight">
                   <div className="p-2.5 bg-emerald-100 rounded-xl"><Trophy className="w-6 h-6 text-emerald-600" /></div> 
                   {goalForm.id ? 'Editar Meta' : 'Nova Meta'}
                 </h3>
-                <button onClick={() => setShowGoalModal(false)} className="p-2 bg-white/50 hover:bg-white/80 rounded-xl transition-colors border border-slate-200/50"><X className="w-5 h-5 text-slate-600" /></button>
+                <button onClick={() => setShowGoalModal(false)} className="p-2 glass-card hover:bg-slate-100 rounded-xl transition-colors"><X className="w-5 h-5 text-slate-600" /></button>
               </div>
               <div className="p-8">
                 <form onSubmit={handleSaveGoal} className="space-y-6">
                   <div>
                     <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Nome do Objetivo</label>
-                    <input type="text" required value={goalForm.name} onChange={e => setGoalForm({...goalForm, name: e.target.value})} placeholder="Ex: Viagem à Europa" className="glass-input w-full px-5 py-4 rounded-2xl outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 font-bold transition-all" />
+                    <input type="text" required value={goalForm.name} onChange={e => setGoalForm({...goalForm, name: e.target.value})} placeholder="Ex: Viagem à Europa" className="glass-input w-full px-5 py-4 rounded-2xl outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 font-bold transition-all" />
                   </div>
                   <div>
                     <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Valor Necessário (R$)</label>
-                    <input type="number" step="0.01" required value={goalForm.target} onChange={e => setGoalForm({...goalForm, target: e.target.value})} placeholder="Ex: 5000" className="glass-input w-full px-5 py-4 rounded-2xl outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 font-bold transition-all" />
+                    <input type="number" step="0.01" required value={goalForm.target} onChange={e => setGoalForm({...goalForm, target: e.target.value})} placeholder="Ex: 5000" className="glass-input w-full px-5 py-4 rounded-2xl outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 font-bold transition-all" />
                   </div>
                   <button type="submit" className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl transition-all active:scale-95">Salvar Meta</button>
                 </form>
@@ -1891,36 +1949,36 @@ export default function App() {
           </div>
         )}
 
-        {/* MODAL DE TRANSAÇÃO, CARTÕES, CONFIG, ETC (MANTIDOS IGUAIS E COM GLASS-CARD) */}
+        {/* MODAL DE TRANSAÇÃO */}
         {showTransactionModal && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
-            <div className="glass-card w-full sm:rounded-[2rem] rounded-t-[2rem] sm:max-w-md shadow-2xl overflow-hidden animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-4 duration-300 flex flex-col max-h-[90vh] border border-slate-200">
-              <div className="p-6 border-b border-slate-200/50 flex justify-between items-center glass-panel sticky top-0 z-10">
-                <h2 className={`text-xl font-black tracking-tight flex items-center gap-3 ${editingId ? 'text-amber-600' : 'text-slate-900'}`}>
-                  <div className={`p-2.5 rounded-xl shadow-sm ${editingId ? 'bg-amber-100' : 'bg-indigo-100'}`}>
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 z-[100]">
+            <div className="glass-card w-full sm:rounded-[2rem] rounded-t-[2rem] sm:max-w-md shadow-2xl overflow-hidden animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-4 duration-300 flex flex-col max-h-[90vh]">
+              <div className="p-5 sm:p-6 border-b border-slate-200/50 flex justify-between items-center glass-panel !border-x-0 !border-t-0 !rounded-none sticky top-0 z-10">
+                <h2 className={`text-lg sm:text-xl font-black tracking-tight flex items-center gap-3 ${editingId ? 'text-amber-600' : 'text-slate-900'}`}>
+                  <div className={`p-2 sm:p-2.5 rounded-xl shadow-sm ${editingId ? 'bg-amber-100' : 'bg-indigo-100'}`}>
                     {editingId ? <Edit className="w-5 h-5 text-amber-600" /> : <Plus className="w-5 h-5 text-indigo-600" />}
                   </div>
                   {editingId ? 'Editar Registo' : 'Novo Registo'}
                 </h2>
-                <button onClick={() => { resetForm(); setShowTransactionModal(false); }} className="p-2 bg-white/50 hover:bg-white/80 rounded-xl transition-colors border border-slate-200/50"><X className="w-5 h-5 text-slate-600" /></button>
+                <button onClick={() => { resetForm(); setShowTransactionModal(false); }} className="p-2 glass-card hover:bg-slate-100 rounded-xl transition-colors"><X className="w-5 h-5 text-slate-600" /></button>
               </div>
               
-              <div className="p-6 overflow-y-auto">
-                <form onSubmit={handleSaveTransaction} className="space-y-6">
-                  <div className="flex gap-2 p-1.5 glass-panel rounded-2xl shadow-inner border border-slate-200/50">
-                    <button type="button" onClick={() => setType('income')} className={`flex-1 py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${type === 'income' ? 'bg-white text-emerald-600 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}>Entrada</button>
-                    <button type="button" onClick={() => setType('expense')} className={`flex-1 py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${type === 'expense' ? 'bg-white text-rose-600 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}>Gasto</button>
-                    <button type="button" onClick={() => setType('investment')} className={`flex-1 py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${type === 'investment' ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}>Investir</button>
+              <div className="p-5 sm:p-6 overflow-y-auto">
+                <form onSubmit={handleSaveTransaction} className="space-y-5 sm:space-y-6">
+                  <div className="flex gap-2 p-1.5 glass-panel rounded-2xl shadow-inner">
+                    <button type="button" onClick={() => setType('income')} className={`flex-1 py-3 text-[10px] sm:text-xs font-black uppercase tracking-widest rounded-xl transition-all ${type === 'income' ? 'glass-card text-emerald-600 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}>Entrada</button>
+                    <button type="button" onClick={() => setType('expense')} className={`flex-1 py-3 text-[10px] sm:text-xs font-black uppercase tracking-widest rounded-xl transition-all ${type === 'expense' ? 'glass-card text-rose-600 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}>Gasto</button>
+                    <button type="button" onClick={() => setType('investment')} className={`flex-1 py-3 text-[10px] sm:text-xs font-black uppercase tracking-widest rounded-xl transition-all ${type === 'investment' ? 'glass-card text-indigo-600 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}>Investir</button>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
                     <div>
                       <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Valor (R$)</label>
-                      <input type="number" step="0.01" required value={amount} onChange={(e) => setAmount(e.target.value)} className="glass-input w-full px-5 py-4 rounded-2xl outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all font-black text-lg" placeholder="0.00" autoFocus />
+                      <input type="number" step="0.01" required value={amount} onChange={(e) => setAmount(e.target.value)} className="glass-input w-full px-4 sm:px-5 py-3 sm:py-4 rounded-2xl outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-black text-base sm:text-lg" placeholder="0.00" autoFocus />
                     </div>
                     <div>
                       <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Data</label>
-                      <input type="date" required value={date} onChange={(e) => setDate(e.target.value)} className="glass-input w-full px-5 py-4 rounded-2xl outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all font-bold" />
+                      <input type="date" required value={date} onChange={(e) => setDate(e.target.value)} className="glass-input w-full px-4 sm:px-5 py-3 sm:py-4 rounded-2xl outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-bold text-sm sm:text-base" />
                     </div>
                   </div>
 
@@ -1931,50 +1989,50 @@ export default function App() {
                         {isCategorizing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />} IA
                       </button>
                     </label>
-                    <input type="text" required value={description} onChange={(e) => handleDescriptionChange(e.target.value)} className="glass-input w-full px-5 py-4 rounded-2xl outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all font-bold" placeholder="Ex: Ifood, Gasolina, Luz..." />
+                    <input type="text" required value={description} onChange={(e) => handleDescriptionChange(e.target.value)} className="glass-input w-full px-4 sm:px-5 py-3 sm:py-4 rounded-2xl outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-bold text-sm sm:text-base" placeholder="Ex: Ifood, Gasolina, Luz..." />
                   </div>
 
                   <div>
                     <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Categoria / Cartão</label>
-                    <div className="flex gap-3">
+                    <div className="flex gap-2 sm:gap-3">
                       <div className="relative w-full">
-                        <select value={category} onChange={(e) => setCategory(e.target.value)} className="glass-input w-full px-5 py-4 rounded-2xl outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all font-bold appearance-none">
+                        <select value={category} onChange={(e) => setCategory(e.target.value)} className="glass-input w-full px-4 sm:px-5 py-3 sm:py-4 rounded-2xl outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-bold appearance-none text-sm sm:text-base">
                           {categories[type] && categories[type].map((cat, idx) => <option key={idx} value={cat} className="text-slate-900">{cat}</option>)}
                         </select>
-                        <div className="absolute inset-y-0 right-5 flex items-center pointer-events-none"><ChevronDown className="w-5 h-5 text-slate-500"/></div>
+                        <div className="absolute inset-y-0 right-4 sm:right-5 flex items-center pointer-events-none"><ChevronDown className="w-4 h-4 sm:w-5 h-5 text-slate-500"/></div>
                       </div>
-                      <button type="button" onClick={handleAddCategory} className="px-5 py-4 bg-slate-900 hover:bg-black text-white rounded-2xl transition-colors shadow-md active:scale-95 flex items-center justify-center" title="Criar Nova Categoria">
-                        <Plus className="w-5 h-5" />
+                      <button type="button" onClick={handleAddCategory} className="px-4 sm:px-5 py-3 sm:py-4 bg-slate-900 hover:bg-black text-white rounded-2xl transition-colors shadow-md active:scale-95 flex items-center justify-center shrink-0" title="Criar Nova Categoria">
+                        <Plus className="w-4 h-4 sm:w-5 h-5" />
                       </button>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-4 p-5 glass-panel rounded-2xl border border-slate-200/50 shadow-sm cursor-pointer hover:border-indigo-300 transition-colors group" onClick={() => setIsPaid(!isPaid)}>
-                    <div className={`p-2.5 rounded-xl transition-colors shadow-sm border ${isPaid ? 'text-emerald-600 bg-emerald-50 border-emerald-200' : 'text-slate-400 bg-white border-slate-200'}`}>
-                      {isPaid ? <CheckCircle className="w-6 h-6" /> : <Circle className="w-6 h-6" />}
+                  <div className="flex items-center gap-3 sm:gap-4 p-4 sm:p-5 glass-panel rounded-2xl shadow-sm cursor-pointer hover:border-indigo-300 transition-colors group" onClick={() => setIsPaid(!isPaid)}>
+                    <div className={`p-2 sm:p-2.5 rounded-xl transition-colors shadow-sm border ${isPaid ? 'text-emerald-600 bg-emerald-50 border-emerald-200' : 'text-slate-400 glass-card'}`}>
+                      {isPaid ? <CheckCircle className="w-5 h-5 sm:w-6 h-6" /> : <Circle className="w-5 h-5 sm:w-6 h-6" />}
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-base font-black text-slate-900">{isPaid ? 'Efetivado / Pago' : 'Agendado / Pendente'}</span>
-                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{isPaid ? 'Afeta o Saldo Real' : 'Apenas Previsão'}</span>
+                      <span className="text-sm sm:text-base font-black text-slate-900">{isPaid ? 'Efetivado / Pago' : 'Agendado / Pendente'}</span>
+                      <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-wider">{isPaid ? 'Afeta o Saldo Real' : 'Apenas Previsão'}</span>
                     </div>
                   </div>
 
                   {(type === 'expense' || type === 'income') && !editingId && (
-                    <div className="glass-panel p-5 rounded-2xl border border-slate-200/50 shadow-inner">
+                    <div className="glass-panel p-4 sm:p-5 rounded-2xl shadow-inner">
                       <label className="flex items-center gap-3 cursor-pointer">
-                        <input type="checkbox" checked={isInstallment} onChange={(e) => setIsInstallment(e.target.checked)} className="w-5 h-5 text-indigo-600 rounded-md focus:ring-indigo-500 border-slate-300" />
-                        <span className="text-sm font-black text-slate-800">{type === 'expense' ? 'Parcelar compra?' : 'Receber parcelado?'}</span>
+                        <input type="checkbox" checked={isInstallment} onChange={(e) => setIsInstallment(e.target.checked)} className="w-4 h-4 sm:w-5 h-5 text-indigo-600 rounded-md focus:ring-indigo-500 border-slate-300" />
+                        <span className="text-xs sm:text-sm font-black text-slate-800">{type === 'expense' ? 'Parcelar compra?' : 'Receber parcelado?'}</span>
                       </label>
                       {isInstallment && (
-                        <div className="mt-5 pt-5 border-t border-slate-200/50 animate-in fade-in">
-                          <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Nº de Parcelas</label>
-                          <input type="number" min="2" max="72" value={installmentsCount} onChange={(e) => setInstallmentsCount(parseInt(e.target.value) || 2)} className="glass-input w-full px-5 py-4 rounded-xl outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 font-bold shadow-sm" />
+                        <div className="mt-4 pt-4 border-t border-slate-200/50 animate-in fade-in">
+                          <label className="block text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Nº de Parcelas</label>
+                          <input type="number" min="2" max="72" value={installmentsCount} onChange={(e) => setInstallmentsCount(parseInt(e.target.value) || 2)} className="glass-input w-full px-4 sm:px-5 py-3 sm:py-4 rounded-xl outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 font-bold shadow-sm" />
                         </div>
                       )}
                     </div>
                   )}
 
-                  <button type="submit" className={`w-full py-5 mt-4 text-white text-sm uppercase tracking-widest font-black rounded-2xl shadow-xl transform active:scale-95 transition-all sticky bottom-4 ${editingId ? 'bg-gradient-to-r from-amber-500 to-orange-500 shadow-amber-500/30' : 'bg-gradient-to-r from-indigo-600 to-purple-600 shadow-indigo-600/30'}`}>
+                  <button type="submit" className={`w-full py-4 sm:py-5 mt-4 text-white text-xs sm:text-sm uppercase tracking-widest font-black rounded-2xl shadow-xl transform active:scale-95 transition-all sticky bottom-4 ${editingId ? 'bg-gradient-to-r from-amber-500 to-orange-500' : 'bg-gradient-to-r from-indigo-600 to-purple-600'}`}>
                     {editingId ? 'Guardar Alterações' : 'Adicionar Registo'}
                   </button>
                 </form>
@@ -1985,9 +2043,9 @@ export default function App() {
 
         {/* MODAL CARTÕES */}
         {showCardsModal && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-50">
-            <div className="glass-card rounded-[2rem] shadow-2xl w-full max-w-3xl max-h-[85vh] overflow-hidden flex flex-col border border-slate-200 animate-in zoom-in-95">
-              <div className="p-6 border-b border-slate-200/50 flex justify-between items-center glass-panel">
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-[100]">
+            <div className="glass-card rounded-[2rem] shadow-2xl w-full max-w-3xl max-h-[85vh] overflow-hidden flex flex-col animate-in zoom-in-95">
+              <div className="p-6 border-b border-slate-200/50 flex justify-between items-center glass-panel !border-x-0 !border-t-0 !rounded-none">
                 <h3 className="font-black text-slate-900 flex items-center gap-3 text-xl tracking-tight">
                   <div className="p-2.5 bg-indigo-100 rounded-xl"><CreditCard className="w-6 h-6 text-indigo-600" /></div> Meus Cartões
                 </h3>
@@ -1997,43 +2055,43 @@ export default function App() {
                       <Plus className="w-4 h-4" /> Novo
                     </button>
                   )}
-                  <button onClick={() => { setShowCardsModal(false); setShowCardForm(false); }} className="p-2 bg-white/50 hover:bg-white/80 rounded-xl transition-colors border border-slate-200/50"><X className="w-5 h-5 text-slate-600" /></button>
+                  <button onClick={() => { setShowCardsModal(false); setShowCardForm(false); }} className="p-2 glass-card hover:bg-slate-100 rounded-xl transition-colors"><X className="w-5 h-5 text-slate-600" /></button>
                 </div>
               </div>
               
               <div className="p-6 md:p-8 overflow-y-auto flex-1">
                 {showCardForm ? (
-                  <div className="glass-panel rounded-3xl border border-slate-200/50 p-8 shadow-xl shadow-slate-200/50 animate-in fade-in slide-in-from-bottom-4">
-                    <h4 className="font-black text-slate-800 mb-6 flex items-center gap-3 text-xl tracking-tight">
+                  <div className="glass-panel rounded-3xl p-6 sm:p-8 shadow-sm animate-in fade-in slide-in-from-bottom-4">
+                    <h4 className="font-black text-slate-800 mb-6 flex items-center gap-3 text-lg sm:text-xl tracking-tight">
                       <div className="p-2 bg-indigo-50 rounded-xl"><Settings2 className="w-5 h-5 text-indigo-600" /></div>
                       {editingCardId ? 'Editar Cartão' : 'Configurar Novo Cartão'}
                     </h4>
-                    <form onSubmit={handleSaveCard} className="space-y-6">
+                    <form onSubmit={handleSaveCard} className="space-y-5 sm:space-y-6">
                       <div>
                         <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Nome do Banco / Cartão</label>
-                        <input type="text" required value={cardForm.name} onChange={e => setCardForm({...cardForm, name: e.target.value})} placeholder="Ex: Nubank, C6 Bank..." className="glass-input w-full px-5 py-4 rounded-2xl outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 font-bold transition-all" />
+                        <input type="text" required value={cardForm.name} onChange={e => setCardForm({...cardForm, name: e.target.value})} placeholder="Ex: Nubank, C6 Bank..." className="glass-input w-full px-4 sm:px-5 py-3 sm:py-4 rounded-2xl outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 font-bold transition-all" />
                       </div>
-                      <div className="grid grid-cols-2 gap-5">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
                         <div>
                           <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Limite (R$)</label>
-                          <input type="number" step="0.01" required value={cardForm.limit} onChange={e => setCardForm({...cardForm, limit: e.target.value})} placeholder="Ex: 1500" className="glass-input w-full px-5 py-4 rounded-2xl outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 font-bold transition-all" />
+                          <input type="number" step="0.01" required value={cardForm.limit} onChange={e => setCardForm({...cardForm, limit: e.target.value})} placeholder="Ex: 1500" className="glass-input w-full px-4 sm:px-5 py-3 sm:py-4 rounded-2xl outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 font-bold transition-all" />
                         </div>
                         <div>
                           <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Dia Vencimento</label>
-                          <input type="number" min="1" max="31" required value={cardForm.dueDay} onChange={e => setCardForm({...cardForm, dueDay: e.target.value})} placeholder="Ex: 5" className="glass-input w-full px-5 py-4 rounded-2xl outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 font-bold transition-all" />
+                          <input type="number" min="1" max="31" required value={cardForm.dueDay} onChange={e => setCardForm({...cardForm, dueDay: e.target.value})} placeholder="Ex: 5" className="glass-input w-full px-4 sm:px-5 py-3 sm:py-4 rounded-2xl outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 font-bold transition-all" />
                         </div>
                       </div>
                       <div>
                         <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">Cor de Identificação</label>
-                        <div className="flex flex-wrap gap-3 p-5 glass-panel rounded-2xl border border-slate-200/50 shadow-inner">
+                        <div className="flex flex-wrap gap-2 sm:gap-3 p-4 sm:p-5 glass-card rounded-2xl shadow-sm justify-center sm:justify-start">
                           {colorOptions.map(color => (
-                            <button key={color} type="button" onClick={() => setCardForm({...cardForm, color})} className={`w-12 h-12 rounded-2xl ${color} ${cardForm.color === color ? 'ring-4 ring-indigo-400 ring-offset-4 scale-110 shadow-lg' : 'hover:scale-110 shadow-sm'} transition-all`}></button>
+                            <button key={color} type="button" onClick={() => setCardForm({...cardForm, color})} className={`w-10 h-10 sm:w-12 sm:h-12 rounded-2xl ${color} ${cardForm.color === color ? 'ring-4 ring-indigo-400 ring-offset-2 sm:ring-offset-4 scale-110 shadow-lg' : 'hover:scale-110 shadow-sm'} transition-all`}></button>
                           ))}
                         </div>
                       </div>
-                      <div className="flex gap-3 pt-4">
-                        <button type="submit" className="flex-1 py-4 bg-slate-900 hover:bg-black text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl transition-all active:scale-95">Salvar Cartão</button>
-                        <button type="button" onClick={() => setShowCardForm(false)} className="px-8 py-4 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-black uppercase tracking-widest text-xs rounded-2xl shadow-sm transition-all active:scale-95">Cancelar</button>
+                      <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                        <button type="submit" className="w-full sm:flex-1 py-4 bg-slate-900 hover:bg-black text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl transition-all active:scale-95">Salvar Cartão</button>
+                        <button type="button" onClick={() => setShowCardForm(false)} className="w-full sm:w-auto px-8 py-4 glass-card text-slate-700 font-black uppercase tracking-widest text-xs rounded-2xl shadow-sm transition-all active:scale-95">Cancelar</button>
                       </div>
                     </form>
                   </div>
@@ -2045,37 +2103,37 @@ export default function App() {
                       const usagePercentage = card.limit > 0 ? Math.min((cardExpenses / card.limit) * 100, 100) : 100;
 
                       return (
-                        <div key={card.id} className="bg-white/90 backdrop-blur-md p-6 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/40 relative overflow-hidden group hover:border-indigo-300 transition-colors flex flex-col">
+                        <div key={card.id} className="glass-panel p-6 rounded-3xl shadow-sm relative overflow-hidden group hover:border-indigo-300 transition-colors flex flex-col">
                           <div className={`absolute top-0 left-0 w-full h-2.5 ${card.color}`}></div>
                           
                           <div className="flex justify-between items-start mb-6 mt-1">
                             <div className="pr-2">
                               <h4 className="font-black text-slate-900 text-xl truncate tracking-tight">{card.name}</h4>
-                              <p className="text-[10px] font-bold text-slate-500 flex items-center gap-1.5 mt-2 bg-slate-100 px-2.5 py-1 rounded-md inline-flex uppercase tracking-widest border border-slate-200"><Calendar className="w-3.5 h-3.5" /> Vence dia {card.dueDay}</p>
+                              <p className="text-[10px] font-bold text-slate-500 flex items-center gap-1.5 mt-2 glass-card px-2.5 py-1 rounded-md inline-flex uppercase tracking-widest"><Calendar className="w-3.5 h-3.5" /> Vence dia {card.dueDay}</p>
                             </div>
-                            <div className="flex items-center gap-1.5 bg-white pl-2">
-                              <button onClick={() => openEditCardForm(card)} className="p-2.5 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-colors border border-slate-200 hover:border-amber-300 shadow-sm active:scale-95"><Edit className="w-4 h-4" /></button>
-                              <button onClick={() => handleDeleteCard(card.id)} className="p-2.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors border border-slate-200 hover:border-rose-300 shadow-sm active:scale-95"><Trash2 className="w-4 h-4" /></button>
+                            <div className="flex items-center gap-1.5 pl-2">
+                              <button onClick={() => openEditCardForm(card)} className="p-2.5 text-slate-500 hover:text-amber-600 glass-card rounded-xl transition-colors shadow-sm active:scale-95"><Edit className="w-4 h-4" /></button>
+                              <button onClick={() => handleDeleteCard(card.id)} className="p-2.5 text-slate-500 hover:text-rose-600 glass-card rounded-xl transition-colors shadow-sm active:scale-95"><Trash2 className="w-4 h-4" /></button>
                             </div>
                           </div>
 
                           <div className="space-y-5 mt-auto">
-                            <div className="flex justify-between text-sm font-bold glass-panel p-4 rounded-2xl border border-slate-200/50 shadow-inner">
+                            <div className="flex justify-between text-sm font-bold glass-card p-4 rounded-2xl shadow-sm">
                               <span className="text-slate-500 uppercase tracking-widest text-[10px]">Limite Total</span>
-                              <span className="text-slate-900 font-black">{formatCurrency(card.limit)}</span>
+                              <span className="text-slate-900 font-black break-words">{formatCurrency(card.limit)}</span>
                             </div>
                             <div>
                               <div className="flex justify-between text-sm mb-2 font-bold px-1">
-                                <span className="text-slate-500 text-[10px] uppercase tracking-widest">Fatura: <span className="text-rose-600 ml-1">{formatCurrency(cardExpenses)}</span></span>
+                                <span className="text-slate-500 text-[10px] uppercase tracking-widest">Fatura: <span className="text-rose-600 ml-1 break-words">{formatCurrency(cardExpenses)}</span></span>
                                 <span className="text-slate-500 text-[10px]">{usagePercentage.toFixed(0)}%</span>
                               </div>
-                              <div className="w-full bg-slate-200 h-3 rounded-full overflow-hidden shadow-inner">
+                              <div className="w-full glass-card h-3 rounded-full overflow-hidden shadow-inner">
                                 <div className={`h-full rounded-full transition-all duration-1000 ${usagePercentage > 90 ? 'bg-rose-500' : usagePercentage > 60 ? 'bg-amber-400' : card.color}`} style={{ width: `${usagePercentage}%` }}></div>
                               </div>
                             </div>
                             <div className="pt-4 border-t border-slate-200/50 flex justify-between items-end px-1">
                               <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Disponível</span>
-                              <span className={`font-black text-2xl tracking-tight ${availableLimit < 100 ? 'text-rose-600' : 'text-emerald-600'}`}>{formatCurrency(availableLimit)}</span>
+                              <span className={`font-black text-2xl tracking-tight break-words ${availableLimit < 100 ? 'text-rose-600' : 'text-emerald-600'}`}>{formatCurrency(availableLimit)}</span>
                             </div>
                           </div>
                         </div>
@@ -2088,54 +2146,63 @@ export default function App() {
           </div>
         )}
 
+        {/* MODAL CONFIGURAÇÕES E APAGAR CONTA */}
         {showSettingsModal && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-50">
-            <div className="glass-card rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden flex flex-col border border-white/20 animate-in zoom-in-95">
-              <div className="p-6 border-b border-slate-200/50 flex justify-between items-center glass-panel text-slate-900">
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-[100]">
+            <div className="glass-card rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden flex flex-col animate-in zoom-in-95">
+              <div className="p-6 border-b border-slate-200/50 flex justify-between items-center glass-panel !border-x-0 !border-t-0 !rounded-none text-slate-900">
                 <h3 className="font-black flex items-center gap-3 text-xl tracking-tight">
                   <div className="p-2.5 bg-indigo-100 rounded-xl"><Settings className="w-6 h-6 text-indigo-600" /></div> Configurações
                 </h3>
-                <button onClick={() => setShowSettingsModal(false)} className="p-2 bg-white/50 hover:bg-white/80 rounded-xl transition-colors border border-slate-200/50"><X className="w-5 h-5 text-slate-600" /></button>
+                <button onClick={() => setShowSettingsModal(false)} className="p-2 glass-card hover:bg-slate-100 rounded-xl transition-colors"><X className="w-5 h-5 text-slate-600" /></button>
               </div>
               
-              <div className="p-8 space-y-6 flex-1">
+              <div className="p-8 space-y-6 flex-1 overflow-y-auto">
                 <div>
                   <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Nome de Exibição</label>
-                  <input type="text" value={userSettings.displayName} onChange={e => setUserSettings({...userSettings, displayName: e.target.value})} className="glass-input w-full px-5 py-4 rounded-2xl outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 font-bold shadow-sm transition-all" placeholder="Seu nome..." />
+                  <input type="text" value={userSettings.displayName} onChange={e => setUserSettings({...userSettings, displayName: e.target.value})} className="glass-input w-full px-5 py-4 rounded-2xl outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 font-bold shadow-sm transition-all" placeholder="Seu nome..." />
                 </div>
                 
-                <div className="p-5 glass-panel border border-indigo-200/50 shadow-lg shadow-indigo-100/50 rounded-2xl relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-indigo-500 to-purple-500"></div>
+                <div className="p-5 bg-indigo-50 border border-indigo-200/50 shadow-sm rounded-2xl relative overflow-hidden">
                   <label className="block text-[10px] font-black text-indigo-700 uppercase tracking-widest mb-3 flex items-center gap-1.5 mt-1"><Sparkles className="w-4 h-4"/> IA Gemini API Key</label>
                   <p className="text-xs text-slate-600 font-medium mb-4 leading-relaxed">Para a funcionalidade de IA funcionar em alojamentos próprios, tem de inserir aqui a sua chave privada do <strong>Google AI Studio</strong>.</p>
-                  <input type="password" value={userSettings.geminiApiKey} onChange={e => setUserSettings({...userSettings, geminiApiKey: e.target.value})} placeholder="Colar a API Key aqui..." className="glass-input w-full px-4 py-3.5 rounded-xl outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 font-mono text-xs shadow-inner text-slate-800" />
+                  <input type="password" value={userSettings.geminiApiKey} onChange={e => setUserSettings({...userSettings, geminiApiKey: e.target.value})} placeholder="Colar a API Key aqui..." className="glass-input w-full px-4 py-3.5 rounded-xl outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 font-mono text-xs shadow-sm" />
                 </div>
 
                 <button onClick={handleSaveSettings} className="w-full py-4 bg-slate-900 hover:bg-black text-white font-black text-sm uppercase tracking-widest rounded-2xl shadow-xl transition-all active:scale-95 mt-4">Guardar Alterações</button>
+                
+                {/* Zona de Perigo */}
+                <div className="pt-6 mt-6 border-t border-rose-200/50">
+                  <h4 className="text-[10px] font-black text-rose-600 uppercase tracking-widest mb-3">Zona de Perigo</h4>
+                  <button onClick={handleDeleteAccount} className="w-full py-4 bg-rose-50 hover:bg-rose-100 text-rose-600 font-black text-xs uppercase tracking-widest rounded-2xl border border-rose-200 transition-all active:scale-95 flex items-center justify-center gap-2">
+                    <Trash2 className="w-4 h-4" /> Apagar Minha Conta
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         )}
 
+        {/* MODAL SINCRONIZAR */}
         {showSyncModal && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-50">
-            <div className="glass-card rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 border border-slate-200">
-               <div className="p-6 border-b border-slate-200/50 flex justify-between items-center glass-panel text-slate-900">
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-[100]">
+            <div className="glass-card rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95">
+               <div className="p-6 border-b border-slate-200/50 flex justify-between items-center glass-panel !border-x-0 !border-t-0 !rounded-none text-slate-900">
                 <h3 className="font-black flex items-center gap-3 text-xl tracking-tight">
                   <div className="p-2.5 bg-indigo-100 rounded-xl"><RefreshCw className="w-6 h-6 text-indigo-600" /></div> Sincronizar
                 </h3>
-                <button onClick={() => setShowSyncModal(false)} className="p-2 bg-white/50 hover:bg-white/80 rounded-xl border border-slate-200/50"><X className="w-5 h-5 text-slate-600" /></button>
+                <button onClick={() => setShowSyncModal(false)} className="p-2 glass-card hover:bg-slate-100 rounded-xl transition-colors"><X className="w-5 h-5 text-slate-600" /></button>
               </div>
               <div className="p-8">
-                <div className="flex gap-1.5 mb-6 p-1.5 glass-panel rounded-2xl shadow-inner border border-slate-200/50">
-                  <button onClick={() => setSyncTab('export')} className={`flex-1 py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${syncTab === 'export' ? 'bg-white shadow-md text-indigo-700' : 'text-slate-500 hover:text-slate-700'}`}>Exportar</button>
-                  <button onClick={() => setSyncTab('import')} className={`flex-1 py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${syncTab === 'import' ? 'bg-white shadow-md text-indigo-700' : 'text-slate-500 hover:text-slate-700'}`}>Importar</button>
+                <div className="flex gap-1.5 mb-6 p-1.5 glass-panel rounded-2xl shadow-inner">
+                  <button onClick={() => setSyncTab('export')} className={`flex-1 py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${syncTab === 'export' ? 'glass-card shadow-md text-indigo-700' : 'text-slate-500 hover:text-slate-700'}`}>Exportar</button>
+                  <button onClick={() => setSyncTab('import')} className={`flex-1 py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${syncTab === 'import' ? 'glass-card shadow-md text-indigo-700' : 'text-slate-500 hover:text-slate-700'}`}>Importar</button>
                 </div>
                 {syncTab === 'export' ? (
                   <div className="space-y-4">
                     <p className="text-xs font-bold text-slate-600 text-center px-4">Copie o código de segurança para transferir os seus dados.</p>
                     <div className="relative group">
-                      <textarea readOnly value={JSON.stringify({ version: 2, transactions, categories, cards })} className="glass-input w-full h-40 p-5 font-mono text-[10px] text-slate-500 border border-slate-200/50 rounded-2xl resize-none outline-none shadow-inner" />
+                      <textarea readOnly value={JSON.stringify({ version: 2, transactions, categories, cards })} className="glass-input w-full h-40 p-5 font-mono text-[10px] rounded-2xl resize-none outline-none shadow-inner" />
                       <button onClick={handleCopySync} className="absolute bottom-4 right-4 flex items-center gap-2 bg-slate-900 text-white px-5 py-3 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-black shadow-lg active:scale-95 transition-all">
                         {copied ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />} {copied ? 'Copiado!' : 'Copiar'}
                       </button>
@@ -2144,8 +2211,8 @@ export default function App() {
                 ) : (
                   <div className="space-y-4">
                     <p className="text-xs font-bold text-slate-600 text-center px-4">Cole o código do outro aparelho para substituir os dados atuais.</p>
-                    <textarea value={importText} onChange={(e) => setImportText(e.target.value)} placeholder="Colar código aqui..." className="glass-input w-full h-40 p-5 font-mono text-[10px] focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 rounded-2xl resize-none outline-none shadow-inner text-slate-800" />
-                    <button onClick={handleImportSync} className="w-full py-4 bg-indigo-600 text-white font-black uppercase tracking-widest text-xs rounded-2xl flex items-center justify-center gap-2 shadow-xl shadow-indigo-600/30 active:scale-95 transition-all"><Download className="w-5 h-5" /> Importar Dados</button>
+                    <textarea value={importText} onChange={(e) => setImportText(e.target.value)} placeholder="Colar código aqui..." className="glass-input w-full h-40 p-5 font-mono text-[10px] focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 rounded-2xl resize-none outline-none shadow-inner" />
+                    <button onClick={handleImportSync} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase tracking-widest text-xs rounded-2xl flex items-center justify-center gap-2 shadow-xl active:scale-95 transition-all"><Download className="w-5 h-5" /> Importar Dados</button>
                   </div>
                 )}
               </div>
@@ -2153,31 +2220,32 @@ export default function App() {
           </div>
         )}
 
+        {/* MODAL GRÁFICOS */}
         {showChartModal && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-50">
-            <div className="glass-card rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden flex flex-col animate-in zoom-in-95 border border-slate-200">
-               <div className="p-6 border-b border-slate-200/50 flex justify-between items-center glass-panel text-slate-900"><h3 className="font-black tracking-tight flex items-center gap-3 text-xl"><div className="p-2.5 bg-indigo-100 rounded-xl"><PieChart className="w-6 h-6 text-indigo-600" /></div> Análise Categórica</h3><button onClick={() => setShowChartModal(false)} className="p-2 bg-white/50 hover:bg-white/80 rounded-xl border border-slate-200/50"><X className="w-5 h-5 text-slate-600" /></button></div>
-              <div className="p-8 flex flex-col items-center bg-white">
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-[100]">
+            <div className="glass-card rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden flex flex-col animate-in zoom-in-95">
+               <div className="p-6 border-b border-slate-200/50 flex justify-between items-center glass-panel !border-x-0 !border-t-0 !rounded-none text-slate-900"><h3 className="font-black tracking-tight flex items-center gap-3 text-xl"><div className="p-2.5 bg-indigo-100 rounded-xl"><PieChart className="w-6 h-6 text-indigo-600" /></div> Análise Categórica</h3><button onClick={() => setShowChartModal(false)} className="p-2 glass-card hover:bg-slate-100 rounded-xl transition-colors"><X className="w-5 h-5 text-slate-600" /></button></div>
+              <div className="p-8 flex flex-col items-center">
                 <div 
-                  className="w-64 h-64 rounded-full shadow-inner mb-10 border-[8px] border-slate-50 overflow-hidden bg-slate-100" 
+                  className="w-64 h-64 rounded-full shadow-inner mb-10 border-[8px] border-slate-50 overflow-hidden glass-panel" 
                   dangerouslySetInnerHTML={{ __html: pieSvgString }}
                 ></div>
-                <div className="w-full grid grid-cols-2 gap-4">{chartData.map((d, i) => (<div key={i} className="flex items-center gap-3 glass-panel p-3.5 rounded-2xl border border-slate-200/50 shadow-sm hover:border-slate-300 transition-colors"><div className="w-4 h-4 rounded-full shrink-0" style={{ backgroundColor: d.color }}></div><div className="flex flex-col"><span className="text-xs font-black text-slate-800 truncate">{d.category}</span><span className="text-[10px] font-bold text-slate-500">{d.percentage.toFixed(0)}%</span></div></div>))}</div>
+                <div className="w-full grid grid-cols-2 gap-4">{chartData.map((d, i) => (<div key={i} className="flex items-center gap-3 glass-panel p-3.5 rounded-2xl shadow-sm"><div className="w-4 h-4 rounded-full shrink-0" style={{ backgroundColor: d.color }}></div><div className="flex flex-col"><span className="text-xs font-black text-slate-800 truncate">{d.category}</span><span className="text-[10px] font-bold text-slate-500">{d.percentage.toFixed(0)}%</span></div></div>))}</div>
               </div>
             </div>
           </div>
         )}
 
-        {/* MODAL PLANO IA META */}
+        {/* MODAIS IA (PLANO META, ORÇAMENTO, IA GERAL, COMPRAS) */}
         {isPlanningGoal && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-50">
-            <div className="glass-card rounded-[2rem] w-full max-w-md max-h-[85vh] flex flex-col shadow-2xl overflow-hidden border border-slate-200 animate-in zoom-in-95">
-              <div className="p-6 border-b border-indigo-200/50 flex justify-between items-center bg-indigo-50/80 text-indigo-900">
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-[100]">
+            <div className="glass-card rounded-[2rem] w-full max-w-md max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95">
+              <div className="p-6 border-b border-indigo-200/50 flex justify-between items-center bg-indigo-50 text-indigo-900">
                 <h3 className="font-black tracking-tight flex items-center gap-3 text-xl">
                   <div className="p-2.5 bg-indigo-600 rounded-xl shadow-lg shadow-indigo-500/30"><Sparkles className="w-6 h-6 text-white"/></div> 
                   Plano Estratégico
                 </h3>
-                <button onClick={() => setIsPlanningGoal(false)} className="p-2 bg-white/50 hover:bg-white/80 rounded-xl border border-indigo-200/50"><X className="w-5 h-5 text-indigo-700"/></button>
+                <button onClick={() => setIsPlanningGoal(false)} className="p-2 glass-card hover:bg-slate-100 rounded-xl transition-colors"><X className="w-5 h-5 text-indigo-700"/></button>
               </div>
               <div className="p-8 overflow-y-auto flex-1">
                 {!aiGoalPlan ? (
@@ -2188,7 +2256,7 @@ export default function App() {
                   </div>
                 ) : (
                   <div className="text-sm font-bold text-slate-700 leading-relaxed space-y-4">
-                    {aiGoalPlan.split('\n').map((l, i) => l.trim() && <p key={i} className="glass-panel p-5 rounded-2xl border border-slate-200/50 shadow-sm">{l}</p>)}
+                    {aiGoalPlan.split('\n').map((l, i) => l.trim() && <p key={i} className="glass-panel p-5 rounded-2xl shadow-sm">{l}</p>)}
                   </div>
                 )}
               </div>
@@ -2196,16 +2264,15 @@ export default function App() {
           </div>
         )}
 
-        {/* MODAL ORÇAMENTO INTELIGENTE IA */}
         {showAiBudgetModal && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-50">
-            <div className="glass-card rounded-[2rem] w-full max-w-md max-h-[85vh] flex flex-col shadow-2xl overflow-hidden border border-slate-200 animate-in zoom-in-95">
-              <div className="p-6 border-b border-indigo-200/50 flex justify-between items-center bg-indigo-50/80 text-indigo-900">
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-[100]">
+            <div className="glass-card rounded-[2rem] w-full max-w-md max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95">
+              <div className="p-6 border-b border-indigo-200/50 flex justify-between items-center bg-indigo-50 text-indigo-900">
                 <h3 className="font-black tracking-tight flex items-center gap-3 text-xl">
                   <div className="p-2.5 bg-indigo-600 rounded-xl shadow-lg shadow-indigo-500/30"><Sparkles className="w-6 h-6 text-white"/></div> 
                   Orçamento Inteligente
                 </h3>
-                <button onClick={() => setShowAiBudgetModal(false)} className="p-2 bg-white/50 hover:bg-white/80 rounded-xl border border-indigo-200/50"><X className="w-5 h-5 text-indigo-700"/></button>
+                <button onClick={() => setShowAiBudgetModal(false)} className="p-2 glass-card hover:bg-slate-100 rounded-xl transition-colors"><X className="w-5 h-5 text-indigo-700"/></button>
               </div>
               <div className="p-8 overflow-y-auto flex-1">
                 {isGeneratingBudget ? (
@@ -2216,7 +2283,7 @@ export default function App() {
                   </div>
                 ) : (
                   <div className="text-sm font-bold text-slate-700 leading-relaxed space-y-4">
-                    {aiBudgetPlan.split('\n').map((l, i) => l.trim() && <p key={i} className="glass-panel p-5 rounded-2xl border border-slate-200/50 shadow-sm">{l}</p>)}
+                    {aiBudgetPlan.split('\n').map((l, i) => l.trim() && <p key={i} className="glass-panel p-5 rounded-2xl shadow-sm">{l}</p>)}
                   </div>
                 )}
               </div>
@@ -2225,16 +2292,16 @@ export default function App() {
         )}
 
         {showAiModal && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-50">
-            <div className="glass-card rounded-[2rem] w-full max-w-md max-h-[85vh] flex flex-col shadow-2xl overflow-hidden border border-slate-200 animate-in zoom-in-95">
-              <div className="p-6 border-b border-indigo-200/50 flex justify-between items-center bg-indigo-50/80 text-indigo-900"><h3 className="font-black tracking-tight flex items-center gap-3 text-xl"><div className="p-2.5 bg-indigo-600 rounded-xl shadow-lg shadow-indigo-500/30"><Sparkles className="w-6 h-6 text-white"/></div> Assistente IA</h3><button onClick={() => setShowAiModal(false)} className="p-2 bg-white/50 hover:bg-white/80 rounded-xl border border-indigo-200/50"><X className="w-5 h-5 text-indigo-700"/></button></div>
-              <div className="p-8 overflow-y-auto flex-1">{isAnalyzing ? <div className="text-center py-16 flex flex-col items-center"><Loader2 className="w-12 h-12 animate-spin text-indigo-600 mb-6"/><span className="font-black text-slate-700 tracking-tight text-lg">A analisar padrões...</span><p className="text-[10px] text-slate-500 font-bold mt-1 uppercase">A preparar o seu relatório.</p></div> : <div className="text-sm font-bold text-slate-700 leading-relaxed space-y-4">{aiInsight.split('\n').map((l, i) => l.trim() && <p key={i} className="glass-panel p-5 rounded-2xl border border-slate-200/50 shadow-sm">{l}</p>)}</div>}</div>
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-[100]">
+            <div className="glass-card rounded-[2rem] w-full max-w-md max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95">
+              <div className="p-6 border-b border-indigo-200/50 flex justify-between items-center bg-indigo-50 text-indigo-900"><h3 className="font-black tracking-tight flex items-center gap-3 text-xl"><div className="p-2.5 bg-indigo-600 rounded-xl shadow-lg shadow-indigo-500/30"><Sparkles className="w-6 h-6 text-white"/></div> Assistente IA</h3><button onClick={() => setShowAiModal(false)} className="p-2 glass-card hover:bg-slate-100 rounded-xl transition-colors"><X className="w-5 h-5 text-indigo-700"/></button></div>
+              <div className="p-8 overflow-y-auto flex-1">{isAnalyzing ? <div className="text-center py-16 flex flex-col items-center"><Loader2 className="w-12 h-12 animate-spin text-indigo-600 mb-6"/><span className="font-black text-slate-700 tracking-tight text-lg">A analisar padrões...</span><p className="text-[10px] text-slate-500 font-bold mt-1 uppercase">A preparar o seu relatório.</p></div> : <div className="text-sm font-bold text-slate-700 leading-relaxed space-y-4">{aiInsight.split('\n').map((l, i) => l.trim() && <p key={i} className="glass-panel p-5 rounded-2xl shadow-sm">{l}</p>)}</div>}</div>
             </div>
           </div>
         )}
 
         {showCalculator && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-50">
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-[150]">
             <div className="bg-slate-900/95 backdrop-blur-xl rounded-[2rem] shadow-2xl shadow-black/50 w-full max-w-[320px] overflow-hidden flex flex-col border border-slate-700/80 animate-in zoom-in-95">
               <div className="p-5 border-b border-slate-800 flex justify-between items-center bg-slate-950/80">
                 <h3 className="font-black text-white flex items-center gap-2 text-xs tracking-widest uppercase">
@@ -2247,14 +2314,11 @@ export default function App() {
                   <span className="text-4xl font-mono text-white tracking-widest font-light">{calcInput || '0'}</span>
                 </div>
                 <div className="grid grid-cols-4 gap-3 md:gap-4">
-                  {['7','8','9','/','4','5','6','*','1','2','3','-','C','0',',','+'].map(btn => (
-                    <button key={btn} onClick={() => handleCalcClickWrapper(btn)} className={`py-4 rounded-2xl font-black text-xl transition-all active:scale-90 ${btn === 'C' ? 'bg-gradient-to-t from-rose-600 to-rose-500 text-white shadow-lg shadow-rose-900/50 hover:from-rose-500 hover:to-rose-400' : ['/','*','-','+'].includes(btn) ? 'bg-slate-800/80 text-indigo-400 hover:bg-slate-700 hover:text-indigo-300' : 'bg-slate-800/50 text-white hover:bg-slate-700 shadow-sm border border-slate-700/50'}`}>
+                  {['C','⌫','%','/','7','8','9','*','4','5','6','-','1','2','3','+','0',',','='].map(btn => (
+                    <button key={btn} onClick={() => handleCalcClickWrapper(btn)} className={`py-4 rounded-2xl font-black text-xl transition-all active:scale-90 ${btn === '0' ? 'col-span-2' : ''} ${btn === 'C' ? 'bg-gradient-to-t from-rose-600 to-rose-500 text-white shadow-lg shadow-rose-900/50 hover:from-rose-500 hover:to-rose-400' : btn === '=' ? 'bg-gradient-to-t from-indigo-600 to-indigo-500 text-white shadow-lg shadow-indigo-900/50 hover:from-indigo-500 hover:to-indigo-400' : ['/','*','-','+'].includes(btn) ? 'bg-slate-800/80 text-indigo-400 hover:bg-slate-700 hover:text-indigo-300' : ['⌫','%'].includes(btn) ? 'bg-slate-700 text-slate-300 hover:bg-slate-600 shadow-sm border border-slate-600/50' : 'bg-slate-800/50 text-white hover:bg-slate-700 shadow-sm border border-slate-700/50'}`}>
                       {btn}
                     </button>
                   ))}
-                  <button onClick={() => handleCalcClickWrapper('=')} className="col-span-4 py-4 rounded-2xl font-black text-xl transition-all active:scale-90 bg-gradient-to-t from-indigo-600 to-indigo-500 text-white shadow-lg shadow-indigo-900/50 hover:from-indigo-500 hover:to-indigo-400">
-                    =
-                  </button>
                 </div>
               </div>
             </div>
@@ -2263,25 +2327,25 @@ export default function App() {
 
         {/* MODAL CONSULTOR DE COMPRAS IA */}
         {showPurchaseModal && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-50">
-            <div className="glass-card rounded-[2rem] w-full max-w-md max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-slate-200 animate-in zoom-in-95">
-              <div className="p-6 border-b border-purple-200/50 flex justify-between items-center bg-purple-50/80 text-purple-900">
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-[100]">
+            <div className="glass-card rounded-[2rem] w-full max-w-md max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95">
+              <div className="p-6 border-b border-purple-200/50 flex justify-between items-center bg-purple-50 text-purple-900">
                 <h3 className="font-black tracking-tight flex items-center gap-3 text-xl">
                   <div className="p-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl shadow-lg shadow-purple-500/30"><ShoppingBag className="w-6 h-6 text-white"/></div>
                   Consultor de Compras
                 </h3>
-                <button onClick={() => setShowPurchaseModal(false)} className="p-2 bg-white/50 hover:bg-white/80 rounded-xl border border-purple-200/50 transition-colors"><X className="w-5 h-5 text-purple-700"/></button>
+                <button onClick={() => setShowPurchaseModal(false)} className="p-2 glass-card hover:bg-slate-100 rounded-xl transition-colors"><X className="w-5 h-5 text-purple-700"/></button>
               </div>
               <div className="p-8 overflow-y-auto flex-1">
                 <p className="text-xs font-bold text-slate-500 mb-6">A IA analisa o seu saldo atual, entradas e gastos do mês para aconselhar se deve avançar com a compra.</p>
                 <form onSubmit={handleAnalyzePurchase} className="space-y-5 mb-6">
                   <div>
                     <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">O que deseja comprar?</label>
-                    <input type="text" required value={purchaseItemName} onChange={(e) => setPurchaseItemName(e.target.value)} placeholder="Ex: Novo Smartphone" className="glass-input w-full px-5 py-4 rounded-2xl outline-none focus:border-purple-400 focus:ring-4 focus:ring-purple-500/10 font-bold shadow-sm" />
+                    <input type="text" required value={purchaseItemName} onChange={(e) => setPurchaseItemName(e.target.value)} placeholder="Ex: Novo Smartphone" className="glass-input w-full px-5 py-4 rounded-2xl outline-none focus:border-purple-500 focus:ring-4 focus:ring-purple-500/10 font-bold shadow-sm" />
                   </div>
                   <div>
                     <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Qual o valor (R$)?</label>
-                    <input type="number" step="0.01" required value={purchaseItemPrice} onChange={(e) => setPurchaseItemPrice(e.target.value)} placeholder="Ex: 3500.00" className="glass-input w-full px-5 py-4 rounded-2xl outline-none focus:border-purple-400 focus:ring-4 focus:ring-purple-500/10 font-bold shadow-sm" />
+                    <input type="number" step="0.01" required value={purchaseItemPrice} onChange={(e) => setPurchaseItemPrice(e.target.value)} placeholder="Ex: 3500.00" className="glass-input w-full px-5 py-4 rounded-2xl outline-none focus:border-purple-500 focus:ring-4 focus:ring-purple-500/10 font-bold shadow-sm" />
                   </div>
                   <button disabled={isAdvisingPurchase} type="submit" className="w-full py-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50">
                     {isAdvisingPurchase ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
@@ -2293,7 +2357,7 @@ export default function App() {
                   <div className="pt-6 border-t border-slate-200/50 animate-in fade-in">
                     <h4 className="text-xs font-black text-purple-600 uppercase tracking-widest mb-3 flex items-center gap-2"><Wand2 className="w-4 h-4"/> Veredicto da IA:</h4>
                     <div className="text-sm font-bold text-slate-700 leading-relaxed space-y-3">
-                       {purchaseAdvice.split('\n').map((l, i) => l.trim() && <p key={i} className="glass-panel p-4 rounded-xl border border-slate-200/50 shadow-sm">{l}</p>)}
+                       {purchaseAdvice.split('\n').map((l, i) => l.trim() && <p key={i} className="glass-panel p-4 rounded-xl shadow-sm">{l}</p>)}
                     </div>
                   </div>
                 )}
@@ -2304,7 +2368,7 @@ export default function App() {
 
         {/* MODAL UNIVERSAL PARA CONFIRMAÇÕES E PROMPTS */}
         {uiModal.type && (
-          <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-md flex items-center justify-center p-4 z-[100] no-print">
+          <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-md flex items-center justify-center p-4 z-[200] no-print">
             <div className="glass-card rounded-[2rem] shadow-2xl w-full max-w-sm p-8 animate-in zoom-in-95">
               <div className="flex justify-between items-start mb-5">
                 <h3 className="font-black text-slate-900 text-xl tracking-tight flex items-center gap-3">
@@ -2314,7 +2378,7 @@ export default function App() {
                   {uiModal.title}
                 </h3>
                 {uiModal.type !== 'alert' && (
-                  <button onClick={closeUiModal} className="text-slate-400 hover:bg-white/50 border border-transparent hover:border-slate-200/50 p-2 rounded-xl transition-colors"><X className="w-5 h-5" /></button>
+                  <button onClick={closeUiModal} className="text-slate-400 hover:bg-slate-100 p-2 rounded-xl transition-colors"><X className="w-5 h-5" /></button>
                 )}
               </div>
               
@@ -2334,13 +2398,13 @@ export default function App() {
                     } 
                   }}
                   placeholder="Escreva aqui..." 
-                  className="glass-input w-full px-5 py-4 mb-6 rounded-xl outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all font-black text-lg" 
+                  className="glass-input w-full px-5 py-4 mb-6 rounded-xl outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-black text-lg shadow-sm" 
                 />
               )}
 
               <div className="flex gap-3 mt-2">
                 {uiModal.type !== 'alert' && (
-                  <button onClick={closeUiModal} className="flex-1 py-4 glass-panel border border-slate-200/50 text-slate-700 hover:bg-white/50 font-black uppercase tracking-widest text-[10px] rounded-xl transition-all shadow-sm">Cancelar</button>
+                  <button onClick={closeUiModal} className="flex-1 py-4 glass-panel text-slate-700 hover:bg-slate-100 font-black uppercase tracking-widest text-[10px] rounded-xl transition-all shadow-sm">Cancelar</button>
                 )}
                 <button 
                   onClick={() => {
