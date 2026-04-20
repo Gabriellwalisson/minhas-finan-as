@@ -642,7 +642,7 @@ export default function App() {
   const handleAddCategory = (e) => {
     if (e) e.preventDefault();
     const typeName = type === 'income' ? 'Entrada' : type === 'expense' ? 'Gasto' : 'Investimento';
-    showPrompt('Nova Categoria', `Qual o nome da nova categoria de ${typeName}?`, (newCat) => {
+    showPrompt('Nova Categoria', `Qual o nome da Nova Categoria de ${typeName}?`, (newCat) => {
       if (newCat && newCat.trim()) {
         const trimmed = newCat.trim();
         if (!categories[type].includes(trimmed)) {
@@ -843,7 +843,7 @@ export default function App() {
   };
 
   const resetForm = () => { setEditingId(null); setDescription(''); setAmount(''); setIsInstallment(false); setInstallmentsCount(2); setInstallmentType('parcela'); setIsPaid(true); };
-  const handleEdit = (t) => { setEditingId(t.id); setDescription(t.description); setAmount(t.amount.toString().replace('.', ',')); setType(t.type); setDate(t.date); setCategory(t.category); setIsPaid(t.status !== 'pending'); setIsInstallment(false); window.scrollTo({ top: 0, behavior: 'smooth' }); setShowTransactionModal(true); };
+  const handleEdit = (t) => { setEditingId(t.id); setDescription(t.description); setAmount(t.amount); setType(t.type); setDate(t.date); setCategory(t.category); setIsPaid(t.status !== 'pending'); setIsInstallment(false); window.scrollTo({ top: 0, behavior: 'smooth' }); setShowTransactionModal(true); };
   
   const handleDelete = async (id) => { 
     showConfirm('Apagar Registo', 'Deseja apagar este registo financeiro?', async () => {
@@ -1286,7 +1286,7 @@ export default function App() {
   };
 
   const permissionModal = firebasePermissionError && (
-    <div className="fixed inset-0 z-[200] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[200] bg-[#0b0410]/80 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="bg-white rounded-3xl p-8 max-w-md text-center shadow-2xl animate-in zoom-in-95">
         <div className="mx-auto w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mb-6">
           <AlertCircle className="w-8 h-8 text-rose-600" />
@@ -1295,7 +1295,7 @@ export default function App() {
         <p className="text-sm font-bold text-slate-600 mb-6">
           Para a aplicação conseguir guardar os seus dados, precisa de ir ao painel do Firebase ➔ <b>Firestore Database</b> ➔ <b>Regras (Rules)</b> e definir as permissões como verdadeiras:
         </p>
-        <div className="bg-slate-800 p-4 rounded-xl text-left text-xs font-mono text-emerald-400 mb-6 overflow-auto border border-slate-700">
+        <div className="bg-[#1a0b2e] p-4 rounded-xl text-left text-xs font-mono text-emerald-400 mb-6 overflow-auto border border-[#321759]">
           rules_version = '2';<br/>
           service cloud.firestore {'{'}<br/>
           &nbsp;&nbsp;match /databases/{"{database}"}/documents {'{'}<br/>
@@ -1320,14 +1320,12 @@ export default function App() {
       <>
         {permissionModal}
         <style dangerouslySetInnerHTML={{__html: `@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');`}} />
-        <div className={`min-h-screen flex items-center justify-center p-4 relative overflow-hidden ${isDarkMode ? 'bg-slate-900' : 'bg-slate-50'}`} style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}>
+        <div className={`min-h-screen flex items-center justify-center p-4 relative overflow-hidden ${isDarkMode ? 'bg-[#0b0410]' : 'bg-slate-50'}`} style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}>
           
-          <div className="fixed inset-0 pointer-events-none z-0 opacity-40" style={{ backgroundImage: 'radial-gradient(circle at center, #818cf8 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
-          
-          <div className={`w-full max-w-md mx-4 relative z-10 p-8 md:p-12 rounded-[2.5rem] shadow-2xl transition-all duration-500 ${isDarkMode ? 'bg-slate-800 border border-slate-700 shadow-black/50' : 'bg-white border border-slate-200 shadow-indigo-900/5'}`}>
+          <div className={`w-full max-w-md mx-4 relative z-10 p-8 md:p-12 rounded-[2.5rem] shadow-2xl transition-all duration-500 ${isDarkMode ? 'bg-[#1a0b2e] border border-[#321759] shadow-purple-900/20' : 'bg-white border border-slate-200 shadow-indigo-900/5'}`}>
             <div className="flex justify-center mb-8">
               {/* Moldura Premium para o novo Ícone */}
-              <div className={`w-32 h-32 rounded-[2rem] shadow-xl overflow-hidden shrink-0 flex items-center justify-center p-1 ${isDarkMode ? 'bg-slate-700 border-slate-600 shadow-purple-900/20' : 'bg-white border-slate-100 shadow-indigo-600/10'} border-2 relative group`}>
+              <div className={`w-32 h-32 rounded-[2rem] shadow-xl overflow-hidden shrink-0 flex items-center justify-center p-1 ${isDarkMode ? 'bg-[#2d144d] border-[#441f74] shadow-purple-900/20' : 'bg-white border-slate-100 shadow-indigo-600/10'} border-2 relative group`}>
                 <img src="/logo.jpg" alt="100 Aperto" className="w-full h-full object-cover scale-[1.05] rounded-[1.8rem] transition-transform duration-700 group-hover:scale-[1.12]" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
                 <div style={{ display: 'none' }} className="w-full h-full bg-indigo-600 rounded-[1.8rem] items-center justify-center">
                    <Wallet className="w-12 h-12 text-white" />
@@ -1340,7 +1338,7 @@ export default function App() {
               <span>Aperto</span>
             </h1>
             
-            <p className={`text-center mb-8 font-semibold text-sm md:text-base tracking-wide ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+            <p className={`text-center mb-8 font-semibold text-sm md:text-base tracking-wide ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>
               {authMode === 'login' ? 'Inteligência financeira ao seu alcance.' : 'Transforme o seu futuro financeiro hoje.'}
             </p>
             
@@ -1349,16 +1347,16 @@ export default function App() {
               
               <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Mail className={`h-5 w-5 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'} group-focus-within:text-amber-500 transition-colors`} />
+                  <Mail className={`h-5 w-5 ${isDarkMode ? 'text-purple-300/70' : 'text-slate-400'} group-focus-within:text-amber-500 transition-colors`} />
                 </div>
-                <input type="text" value={emailInput} onChange={(e) => setEmailInput(e.target.value)} placeholder="Nome ou E-mail" className={`w-full pl-12 pr-4 py-4 rounded-2xl outline-none transition-all font-bold ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500 focus:ring-amber-500/20 focus:border-amber-500' : 'bg-white border border-slate-300 text-slate-900 placeholder-slate-400 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 shadow-sm'}`} />
+                <input type="text" value={emailInput} onChange={(e) => setEmailInput(e.target.value)} placeholder="Nome ou E-mail" className={`w-full pl-12 pr-4 py-4 rounded-2xl outline-none transition-all font-bold ${isDarkMode ? 'bg-[#0b0410] border border-[#321759] text-white placeholder-purple-300/40 focus:ring-amber-500/20 focus:border-amber-500' : 'bg-white border border-slate-300 text-slate-900 placeholder-slate-400 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 shadow-sm'}`} />
               </div>
               
               <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Lock className={`h-5 w-5 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'} group-focus-within:text-amber-500 transition-colors`} />
+                  <Lock className={`h-5 w-5 ${isDarkMode ? 'text-purple-300/70' : 'text-slate-400'} group-focus-within:text-amber-500 transition-colors`} />
                 </div>
-                <input type="password" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} placeholder="Palavra-passe" className={`w-full pl-12 pr-4 py-4 rounded-2xl outline-none transition-all font-bold ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500 focus:ring-amber-500/20 focus:border-amber-500' : 'bg-white border border-slate-300 text-slate-900 placeholder-slate-400 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 shadow-sm'}`} />
+                <input type="password" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} placeholder="Palavra-passe" className={`w-full pl-12 pr-4 py-4 rounded-2xl outline-none transition-all font-bold ${isDarkMode ? 'bg-[#0b0410] border border-[#321759] text-white placeholder-purple-300/40 focus:ring-amber-500/20 focus:border-amber-500' : 'bg-white border border-slate-300 text-slate-900 placeholder-slate-400 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 shadow-sm'}`} />
               </div>
               
               <button disabled={isAuthLoading} type="submit" className={`w-full py-4 mt-4 font-black uppercase tracking-widest text-sm rounded-2xl transform transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 ${isDarkMode ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-900/50' : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-md'}`}>
@@ -1401,20 +1399,34 @@ export default function App() {
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* MODO ESCURO */
+        .dark-theme { background-color: #0b0410 !important; color: #f8fafc !important; }
+        .dark-theme .text-slate-900, .dark-theme .text-slate-800 { color: #f8fafc !important; }
+        .dark-theme .text-slate-700, .dark-theme .text-slate-600 { color: #e9d5ff !important; }
+        .dark-theme .text-slate-500, .dark-theme .text-slate-400 { color: rgba(216, 180, 254, 0.7) !important; }
+
+        /* UTILITÁRIOS MODO ESCURO */
+        .dark-theme .bg-emerald-50 { background-color: rgba(6, 78, 59, 0.3) !important; border-color: rgba(52, 211, 153, 0.2) !important;}
+        .dark-theme .bg-rose-50 { background-color: rgba(136, 19, 55, 0.3) !important; border-color: rgba(251, 113, 133, 0.2) !important;}
+        .dark-theme .bg-indigo-50 { background-color: rgba(49, 46, 129, 0.3) !important; border-color: rgba(129, 140, 248, 0.2) !important;}
+        .dark-theme .bg-amber-50 { background-color: rgba(120, 53, 15, 0.3) !important; border-color: rgba(251, 191, 36, 0.2) !important;}
+
+        .dark-theme .bg-grid-pattern {
+          background-image: linear-gradient(to right, rgba(167, 139, 250, 0.05) 1px, transparent 1px),
+                            linear-gradient(to bottom, rgba(167, 139, 250, 0.05) 1px, transparent 1px);
+        }
       `}} />
 
-      <div className={`min-h-screen relative pb-24 md:pb-12 ${isDarkMode ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-900'}`}>
+      <div className={`min-h-screen relative pb-24 md:pb-12 ${isDarkMode ? 'bg-[#0b0410] text-white' : 'bg-slate-50 text-slate-900'}`}>
         
-        {/* DECORATIVE BACKGROUND */}
-        <div className="fixed inset-0 pointer-events-none z-0 opacity-40" style={{ backgroundImage: `radial-gradient(circle at center, ${isDarkMode ? '#334155' : '#cbd5e1'} 1px, transparent 1px)`, backgroundSize: '24px 24px' }}></div>
-
         {/* --- HEADER --- */}
-        <header className={`relative z-40 transition-colors duration-500 no-print border-b ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
+        <header className={`relative z-40 transition-colors duration-500 no-print border-b ${isDarkMode ? 'bg-[#0b0410] border-[#1a0b2e]' : 'bg-white border-slate-200 shadow-sm'}`}>
           <div className="max-w-7xl mx-auto px-4 py-3 md:py-4 flex flex-col md:flex-row justify-between items-center gap-4">
             
             <div className="flex justify-between w-full md:w-auto items-center">
               <div className="flex items-center gap-3">
-                <div className={`w-12 h-12 rounded-[1.2rem] shadow-sm overflow-hidden shrink-0 border flex items-center justify-center ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                <div className={`w-12 h-12 rounded-[1.2rem] shadow-sm overflow-hidden shrink-0 border flex items-center justify-center ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759]' : 'bg-white border-slate-200'}`}>
                   <img src="/logo.jpg" alt="100 Aperto" className="w-full h-full object-cover scale-[1.05] rounded-[1.1rem]" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
                   <div style={{ display: 'none' }} className="w-full h-full bg-indigo-600 rounded-[1.1rem] items-center justify-center">
                      <Wallet className="w-6 h-6 text-white" />
@@ -1429,10 +1441,10 @@ export default function App() {
                 </div>
               </div>
               <div className="flex md:hidden items-center gap-1.5">
-                <button onClick={() => setIsDarkMode(!isDarkMode)} className={`p-2 rounded-xl transition-colors ${isDarkMode ? 'bg-slate-800 hover:bg-slate-700' : 'bg-slate-100 hover:bg-slate-200'}`}>
+                <button onClick={() => setIsDarkMode(!isDarkMode)} className={`p-2 rounded-xl transition-colors ${isDarkMode ? 'bg-[#1a0b2e] hover:bg-[#2d144d]' : 'bg-slate-100 hover:bg-slate-200'}`}>
                   {isDarkMode ? <Sun className="w-4 h-4 text-white" /> : <Moon className="w-4 h-4 text-slate-700" />}
                 </button>
-                <button onClick={() => setShowCalculator(true)} className={`p-2 rounded-xl transition-colors ${isDarkMode ? 'bg-slate-800 hover:bg-slate-700' : 'bg-slate-100 hover:bg-slate-200'}`}>
+                <button onClick={() => setShowCalculator(true)} className={`p-2 rounded-xl transition-colors ${isDarkMode ? 'bg-[#1a0b2e] hover:bg-[#2d144d]' : 'bg-slate-100 hover:bg-slate-200'}`}>
                   <CalculatorIcon className={`w-4 h-4 ${isDarkMode ? 'text-white' : 'text-slate-700'}`} />
                 </button>
                 <button onClick={handleLogout} className={`p-2 rounded-xl transition-colors ${isDarkMode ? 'bg-rose-900/20 hover:bg-rose-900/40 text-rose-400' : 'bg-rose-50 hover:bg-rose-100 text-rose-500'}`}>
@@ -1441,36 +1453,36 @@ export default function App() {
               </div>
             </div>
             
-            <div className={`flex items-center gap-1 rounded-2xl p-1 w-full md:w-auto justify-between border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
-              <button onClick={prevMonth} className={`p-2.5 rounded-xl transition-colors shadow-sm ${isDarkMode ? 'hover:bg-slate-700' : 'hover:bg-white'}`}><ChevronLeft className="w-5 h-5" /></button>
+            <div className={`flex items-center gap-1 rounded-2xl p-1 w-full md:w-auto justify-between border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759]' : 'bg-slate-50 border-slate-200'}`}>
+              <button onClick={prevMonth} className={`p-2.5 rounded-xl transition-colors shadow-sm ${isDarkMode ? 'hover:bg-[#2d144d]' : 'hover:bg-white'}`}><ChevronLeft className="w-5 h-5" /></button>
               <div className="flex items-center gap-2 font-black text-base md:text-lg px-4">
                 <Calendar className="w-4 h-4 opacity-60 hidden md:block" />
                 {monthNames[currentMonth]} {currentYear}
               </div>
-              <button onClick={nextMonth} className={`p-2.5 rounded-xl transition-colors shadow-sm ${isDarkMode ? 'hover:bg-slate-700' : 'hover:bg-white'}`}><ChevronRight className="w-5 h-5" /></button>
+              <button onClick={nextMonth} className={`p-2.5 rounded-xl transition-colors shadow-sm ${isDarkMode ? 'hover:bg-[#2d144d]' : 'hover:bg-white'}`}><ChevronRight className="w-5 h-5" /></button>
             </div>
 
             <div className="hidden md:flex items-center gap-3">
-              <div className={`flex items-center gap-2 text-sm font-bold mr-2 px-5 py-2.5 rounded-2xl border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+              <div className={`flex items-center gap-2 text-sm font-bold mr-2 px-5 py-2.5 rounded-2xl border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759]' : 'bg-slate-50 border-slate-200'}`}>
                 <User className={`w-4 h-4 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} /> <span className="max-w-[120px] truncate">{currentUser?.name}</span>
                 {nativeInsights.badges.length > 0 && <div className={`w-px h-4 mx-1 ${isDarkMode ? 'bg-slate-600' : 'bg-slate-300'}`}></div>}
                 <div className="flex -space-x-1">
-                  {nativeInsights.badges.map((b, i) => <div key={i} className={`w-6 h-6 rounded-full flex items-center justify-center shadow-sm border ${isDarkMode ? 'bg-slate-700 border-slate-600 text-indigo-300' : 'bg-white border-slate-200 text-indigo-600'}`} title={b.label}>{b.icon}</div>)}
+                  {nativeInsights.badges.map((b, i) => <div key={i} className={`w-6 h-6 rounded-full flex items-center justify-center shadow-sm border ${isDarkMode ? 'bg-[#2d144d] border-[#441f74] text-indigo-300' : 'bg-white border-slate-200 text-indigo-600'}`} title={b.label}>{b.icon}</div>)}
                 </div>
               </div>
-              <div className={`flex p-1.5 rounded-2xl gap-1 border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
-                <button onClick={() => setIsDarkMode(!isDarkMode)} className={`p-2.5 rounded-xl transition-colors shadow-sm ${isDarkMode ? 'hover:bg-slate-700' : 'hover:bg-white'}`} title="Alternar Tema Escuro">
+              <div className={`flex p-1.5 rounded-2xl gap-1 border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759]' : 'bg-slate-50 border-slate-200'}`}>
+                <button onClick={() => setIsDarkMode(!isDarkMode)} className={`p-2.5 rounded-xl transition-colors shadow-sm ${isDarkMode ? 'hover:bg-[#2d144d]' : 'hover:bg-white'}`} title="Alternar Tema Escuro">
                   {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5 text-slate-700" />}
                 </button>
-                <button onClick={() => setShowSettingsModal(true)} className={`p-2.5 rounded-xl transition-colors shadow-sm ${isDarkMode ? 'hover:bg-slate-700 text-white' : 'hover:bg-white text-slate-700'}`} title="Configurações"><Settings className="w-5 h-5" /></button>
-                <button onClick={() => setShowCalculator(true)} className={`p-2.5 rounded-xl transition-colors shadow-sm ${isDarkMode ? 'hover:bg-slate-700 text-white' : 'hover:bg-white text-slate-700'}`} title="Calculadora"><CalculatorIcon className="w-5 h-5" /></button>
-                <button onClick={() => setShowSyncModal(true)} className={`p-2.5 rounded-xl transition-colors shadow-sm ${isDarkMode ? 'hover:bg-slate-700 text-white' : 'hover:bg-white text-slate-700'}`} title="Sincronizar Dados"><RefreshCw className="w-5 h-5" /></button>
+                <button onClick={() => setShowSettingsModal(true)} className={`p-2.5 rounded-xl transition-colors shadow-sm ${isDarkMode ? 'hover:bg-[#2d144d] text-white' : 'hover:bg-white text-slate-700'}`} title="Configurações"><Settings className="w-5 h-5" /></button>
+                <button onClick={() => setShowCalculator(true)} className={`p-2.5 rounded-xl transition-colors shadow-sm ${isDarkMode ? 'hover:bg-[#2d144d] text-white' : 'hover:bg-white text-slate-700'}`} title="Calculadora"><CalculatorIcon className="w-5 h-5" /></button>
+                <button onClick={() => setShowSyncModal(true)} className={`p-2.5 rounded-xl transition-colors shadow-sm ${isDarkMode ? 'hover:bg-[#2d144d] text-white' : 'hover:bg-white text-slate-700'}`} title="Sincronizar Dados"><RefreshCw className="w-5 h-5" /></button>
                 <button onClick={handleLogout} className={`p-2.5 rounded-xl transition-colors shadow-sm ${isDarkMode ? 'hover:bg-rose-900/30 text-rose-400' : 'hover:bg-rose-50 text-rose-500'}`} title="Sair da Conta"><LogOut className="w-5 h-5" /></button>
               </div>
             </div>
           </div>
 
-          <div className={`px-4 py-2.5 flex items-center justify-center gap-2 text-xs font-bold border-t ${isDarkMode ? 'bg-indigo-900/20 border-indigo-800/50 text-indigo-300' : 'bg-indigo-50 border-indigo-100 text-indigo-700'}`}>
+          <div className={`px-4 py-2.5 flex items-center justify-center gap-2 text-xs font-bold border-t ${isDarkMode ? 'bg-indigo-900/20 border-[#321759] text-indigo-300' : 'bg-indigo-50 border-indigo-100 text-indigo-700'}`}>
             <Lightbulb className="w-4 h-4 text-amber-500 shrink-0" />
             <span className="truncate max-w-[90%]">{todayTip}</span>
           </div>
@@ -1478,11 +1490,11 @@ export default function App() {
 
         {/* NAVEGAÇÃO DE TABS */}
         <div className="max-w-7xl mx-auto px-4 mt-6 relative z-10 no-print">
-          <div className={`flex gap-2 p-1.5 rounded-[1.2rem] shadow-sm border overflow-x-auto hide-scrollbar ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-            <button onClick={() => setActiveTab('dashboard')} className={`flex-1 min-w-[100px] py-3 px-4 text-xs font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 ${activeTab === 'dashboard' ? 'bg-indigo-600 text-white shadow-md' : (isDarkMode ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-50')}`}><LayoutDashboard className="w-4 h-4" /> Resumo</button>
-            <button onClick={() => setActiveTab('extrato')} className={`flex-1 min-w-[100px] py-3 px-4 text-xs font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 ${activeTab === 'extrato' ? 'bg-indigo-600 text-white shadow-md' : (isDarkMode ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-50')}`}><ListOrdered className="w-4 h-4" /> Extrato</button>
-            <button onClick={() => setActiveTab('metas')} className={`flex-1 min-w-[100px] py-3 px-4 text-xs font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 ${activeTab === 'metas' ? 'bg-indigo-600 text-white shadow-md' : (isDarkMode ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-50')}`}><Target className="w-4 h-4" /> Orçamento</button>
-            <button onClick={() => setActiveTab('simulador')} className={`flex-1 min-w-[100px] py-3 px-4 text-xs font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 ${activeTab === 'simulador' ? 'bg-indigo-600 text-white shadow-md' : (isDarkMode ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-50')}`}><TrendingUp className="w-4 h-4" /> Evolução</button>
+          <div className={`flex gap-2 p-1.5 rounded-[1.2rem] shadow-sm border overflow-x-auto hide-scrollbar ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759]' : 'bg-white border-slate-200'}`}>
+            <button onClick={() => setActiveTab('dashboard')} className={`flex-1 min-w-[100px] py-3 px-4 text-xs font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 ${activeTab === 'dashboard' ? 'bg-indigo-600 text-white shadow-md' : (isDarkMode ? 'text-purple-300/70 hover:bg-[#2d144d]' : 'text-slate-500 hover:bg-slate-50')}`}><LayoutDashboard className="w-4 h-4" /> Resumo</button>
+            <button onClick={() => setActiveTab('extrato')} className={`flex-1 min-w-[100px] py-3 px-4 text-xs font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 ${activeTab === 'extrato' ? 'bg-indigo-600 text-white shadow-md' : (isDarkMode ? 'text-purple-300/70 hover:bg-[#2d144d]' : 'text-slate-500 hover:bg-slate-50')}`}><ListOrdered className="w-4 h-4" /> Extrato</button>
+            <button onClick={() => setActiveTab('metas')} className={`flex-1 min-w-[100px] py-3 px-4 text-xs font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 ${activeTab === 'metas' ? 'bg-indigo-600 text-white shadow-md' : (isDarkMode ? 'text-purple-300/70 hover:bg-[#2d144d]' : 'text-slate-500 hover:bg-slate-50')}`}><Target className="w-4 h-4" /> Orçamento</button>
+            <button onClick={() => setActiveTab('simulador')} className={`flex-1 min-w-[100px] py-3 px-4 text-xs font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 ${activeTab === 'simulador' ? 'bg-indigo-600 text-white shadow-md' : (isDarkMode ? 'text-purple-300/70 hover:bg-[#2d144d]' : 'text-slate-500 hover:bg-slate-50')}`}><TrendingUp className="w-4 h-4" /> Evolução</button>
           </div>
         </div>
 
@@ -1501,8 +1513,8 @@ export default function App() {
                   {nativeInsights.insights.length > 0 && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {nativeInsights.insights.map((insight, idx) => (
-                        <div key={idx} className={`p-4 sm:p-5 rounded-2xl flex items-start gap-4 shadow-sm border ${isDarkMode ? 'bg-indigo-900/20 border-indigo-800/50' : 'bg-indigo-50 border-indigo-200'}`}>
-                          <div className={`p-2 sm:p-2.5 rounded-full shadow-sm shrink-0 border ${isDarkMode ? 'bg-slate-800 border-indigo-800/50' : 'bg-white border-transparent'}`}><Info className={`w-5 h-5 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} /></div>
+                        <div key={idx} className={`p-4 sm:p-5 rounded-2xl flex items-start gap-4 shadow-sm border ${isDarkMode ? 'bg-indigo-900/20 border-[#321759]' : 'bg-indigo-50 border-indigo-200'}`}>
+                          <div className={`p-2 sm:p-2.5 rounded-full shadow-sm shrink-0 border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759]' : 'bg-white border-transparent'}`}><Info className={`w-5 h-5 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} /></div>
                           <p className={`text-xs sm:text-sm font-black leading-tight mt-1 ${isDarkMode ? 'text-indigo-100' : 'text-indigo-900'}`}>{insight}</p>
                         </div>
                       ))}
@@ -1510,50 +1522,50 @@ export default function App() {
                   )}
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5">
-                    <div className={`rounded-[2rem] p-6 sm:p-8 flex flex-col relative overflow-hidden shadow-sm border transition-all duration-300 ${isDarkMode ? 'bg-slate-800 border-slate-700 hover:border-indigo-500' : 'bg-white border-slate-200 hover:border-indigo-300'}`}>
+                    <div className={`rounded-[2rem] p-6 sm:p-8 flex flex-col relative overflow-hidden shadow-sm border transition-all duration-300 ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759] hover:border-indigo-500' : 'bg-white border-slate-200 hover:border-indigo-300'}`}>
                       <div className="flex justify-between items-start z-10">
-                        <span className={`font-black text-xs tracking-widest uppercase ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Saldo Real</span>
-                        <span className={`text-[10px] px-2.5 py-1 rounded-lg font-black uppercase tracking-widest border ${isDarkMode ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>Mês Atual</span>
+                        <span className={`font-black text-xs tracking-widest uppercase ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>Saldo Real</span>
+                        <span className={`text-[10px] px-2.5 py-1 rounded-lg font-black uppercase tracking-widest border ${isDarkMode ? 'bg-[#2d144d] border-[#441f74] text-purple-200' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>Mês Atual</span>
                       </div>
                       <span className={`text-3xl sm:text-4xl md:text-5xl font-black mt-4 z-10 tracking-tight break-words whitespace-normal leading-none ${realBalance >= 0 ? (isDarkMode ? 'text-white' : 'text-slate-900') : (isDarkMode ? 'text-rose-400' : 'text-rose-600')}`}>
                         {formatCurrency(realBalance)}
                       </span>
-                      <div className={`mt-auto pt-5 border-t text-xs font-black flex justify-between items-center z-10 gap-2 ${isDarkMode ? 'border-slate-700' : 'border-slate-100'}`}>
-                        <span className={`uppercase tracking-wider text-[10px] shrink-0 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Previsto</span>
-                        <span className={`break-words ${expectedBalance >= 0 ? (isDarkMode ? 'text-slate-300' : 'text-slate-700') : (isDarkMode ? 'text-rose-400' : 'text-rose-600')}`}>{formatCurrency(expectedBalance)}</span>
+                      <div className={`mt-auto pt-5 border-t text-xs font-black flex justify-between items-center z-10 gap-2 ${isDarkMode ? 'border-[#321759]' : 'border-slate-100'}`}>
+                        <span className={`uppercase tracking-wider text-[10px] shrink-0 ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>Previsto</span>
+                        <span className={`break-words ${expectedBalance >= 0 ? (isDarkMode ? 'text-purple-200' : 'text-slate-700') : (isDarkMode ? 'text-rose-400' : 'text-rose-600')}`}>{formatCurrency(expectedBalance)}</span>
                       </div>
                     </div>
 
-                    <div className={`rounded-[2rem] p-6 sm:p-8 flex flex-col justify-between shadow-sm border transition-all duration-300 ${isDarkMode ? 'bg-slate-800 border-slate-700 hover:border-emerald-500' : 'bg-white border-slate-200 hover:border-emerald-300'}`}>
-                      <div className={`flex items-center gap-2 font-black text-xs uppercase tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                    <div className={`rounded-[2rem] p-6 sm:p-8 flex flex-col justify-between shadow-sm border transition-all duration-300 ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759] hover:border-emerald-500' : 'bg-white border-slate-200 hover:border-emerald-300'}`}>
+                      <div className={`flex items-center gap-2 font-black text-xs uppercase tracking-widest ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>
                         <div className={`p-2 rounded-xl border ${isDarkMode ? 'bg-emerald-900/30 border-emerald-800/50' : 'bg-emerald-50 border-emerald-100'}`}><ArrowUpCircle className={`w-5 h-5 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`} /></div> Entradas
                       </div>
                       <span className={`text-3xl xl:text-4xl font-black mt-5 tracking-tight break-words leading-none ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{formatCurrency(income)}</span>
                     </div>
 
-                    <div className={`rounded-[2rem] p-6 sm:p-8 flex flex-col relative justify-between shadow-sm border transition-all duration-300 ${isDarkMode ? 'bg-slate-800 border-slate-700 hover:border-rose-500' : 'bg-white border-slate-200 hover:border-rose-300'}`}>
+                    <div className={`rounded-[2rem] p-6 sm:p-8 flex flex-col relative justify-between shadow-sm border transition-all duration-300 ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759] hover:border-rose-500' : 'bg-white border-slate-200 hover:border-rose-300'}`}>
                       <div className="flex justify-between items-center">
-                        <div className={`flex items-center gap-2 font-black text-xs uppercase tracking-widest shrink-0 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                        <div className={`flex items-center gap-2 font-black text-xs uppercase tracking-widest shrink-0 ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>
                           <div className={`p-2 rounded-xl border ${isDarkMode ? 'bg-rose-900/30 border-rose-800/50' : 'bg-rose-50 border-rose-100'}`}><ArrowDownCircle className={`w-5 h-5 ${isDarkMode ? 'text-rose-400' : 'text-rose-600'}`} /></div> Gastos
                         </div>
                         {income > 0 && <span className={`text-[10px] font-black px-2 py-1 rounded-lg border uppercase whitespace-nowrap ml-2 ${isDarkMode ? 'text-rose-400 bg-rose-900/30 border-rose-800/50' : 'text-rose-600 bg-rose-50 border-rose-200'}`}>{budgetPercentage.toFixed(0)}% Usado</span>}
                       </div>
                       <span className={`text-3xl xl:text-4xl font-black mt-5 tracking-tight break-words leading-none ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{formatCurrency(expense)}</span>
-                      <div className={`w-full h-2.5 rounded-full mt-6 overflow-hidden shadow-inner shrink-0 ${isDarkMode ? 'bg-slate-700' : 'bg-slate-100'}`}>
+                      <div className={`w-full h-2.5 rounded-full mt-6 overflow-hidden shadow-inner shrink-0 ${isDarkMode ? 'bg-[#2d144d]' : 'bg-slate-100'}`}>
                         <div className={`h-full rounded-full transition-all duration-1000 ${budgetPercentage > 85 ? 'bg-rose-500' : budgetPercentage > 60 ? 'bg-amber-400' : 'bg-emerald-500'}`} style={{ width: `${budgetPercentage}%` }}></div>
                       </div>
                     </div>
 
-                    <div className={`rounded-[2rem] p-6 sm:p-8 flex flex-col col-span-1 sm:col-span-2 xl:col-span-1 justify-between shadow-sm border ${isDarkMode ? 'bg-indigo-900/20 border-indigo-800/50' : 'bg-indigo-50 border-indigo-100'}`}>
+                    <div className={`rounded-[2rem] p-6 sm:p-8 flex flex-col col-span-1 sm:col-span-2 xl:col-span-1 justify-between shadow-sm border ${isDarkMode ? 'bg-indigo-900/20 border-[#321759]' : 'bg-indigo-50 border-indigo-100'}`}>
                       <div className={`flex items-center gap-2 font-black text-xs uppercase tracking-widest ${isDarkMode ? 'text-indigo-300' : 'text-indigo-800'}`}>
-                        <div className={`p-2 rounded-xl shadow-sm border ${isDarkMode ? 'bg-slate-800 border-indigo-700' : 'bg-white border-indigo-100'}`}><TrendingUp className={`w-5 h-5 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} /></div> Investimentos
+                        <div className={`p-2 rounded-xl shadow-sm border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759]' : 'bg-white border-indigo-100'}`}><TrendingUp className={`w-5 h-5 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} /></div> Investimentos
                       </div>
                       <div className="flex flex-col mt-5 overflow-hidden">
                         <div className="flex justify-between items-end mb-4 gap-2">
                           <span className={`text-xs font-black uppercase tracking-widest shrink-0 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-500'}`}>Neste Mês</span>
                           <span className={`text-2xl font-black tracking-tight break-words text-right ${isDarkMode ? 'text-white' : 'text-indigo-900'}`}>{formatCurrency(investment)}</span>
                         </div>
-                        <div className={`flex justify-between items-end pt-4 border-t gap-2 ${isDarkMode ? 'border-indigo-800/50' : 'border-indigo-200/50'}`}>
+                        <div className={`flex justify-between items-end pt-4 border-t gap-2 ${isDarkMode ? 'border-[#321759]' : 'border-indigo-200/50'}`}>
                           <span className={`text-xs font-black uppercase tracking-widest shrink-0 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}>Acumulado</span>
                           <span className={`text-xl lg:text-2xl font-black tracking-tight break-words text-right ${isDarkMode ? 'text-indigo-200' : 'text-indigo-700'}`}>{formatCurrency(accumulatedInvestment)}</span>
                         </div>
@@ -1561,16 +1573,16 @@ export default function App() {
                     </div>
                   </div>
                   
-                  <div className={`rounded-[2rem] p-6 sm:p-8 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 shadow-sm border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                  <div className={`rounded-[2rem] p-6 sm:p-8 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 shadow-sm border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759]' : 'bg-white border-slate-200'}`}>
                     <div>
                       <h3 className={`font-black text-xl sm:text-2xl mb-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Acesso Rápido</h3>
-                      <p className={`text-sm sm:text-base font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Faça a gestão dos seus cartões e analise os seus gastos no gráfico.</p>
+                      <p className={`text-sm sm:text-base font-bold ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>Faça a gestão dos seus cartões e analise os seus gastos no gráfico.</p>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
-                      <button onClick={() => setShowCardsModal(true)} className={`flex-1 lg:flex-none flex items-center justify-center gap-2 px-6 py-4 rounded-2xl text-sm font-black uppercase tracking-widest transition-all shadow-md active:scale-95 w-full sm:w-auto ${isDarkMode ? 'bg-slate-700 text-white hover:bg-slate-600' : 'bg-slate-900 text-white hover:bg-black'}`}>
+                      <button onClick={() => setShowCardsModal(true)} className={`flex-1 lg:flex-none flex items-center justify-center gap-2 px-6 py-4 rounded-2xl text-sm font-black uppercase tracking-widest transition-all shadow-md active:scale-95 w-full sm:w-auto ${isDarkMode ? 'bg-[#2d144d] text-white hover:bg-[#3f1d6b]' : 'bg-slate-900 text-white hover:bg-black'}`}>
                         <CreditCard className="w-5 h-5" /> Cartões
                       </button>
-                      <button onClick={() => setShowChartModal(true)} className={`flex-1 lg:flex-none flex items-center justify-center gap-2 px-6 py-4 rounded-2xl text-sm font-black uppercase tracking-widest transition-all shadow-sm active:scale-95 w-full sm:w-auto border ${isDarkMode ? 'bg-slate-800 border-slate-700 text-indigo-400 hover:bg-slate-700' : 'bg-white border-slate-200 text-indigo-700 hover:bg-slate-50'}`}>
+                      <button onClick={() => setShowChartModal(true)} className={`flex-1 lg:flex-none flex items-center justify-center gap-2 px-6 py-4 rounded-2xl text-sm font-black uppercase tracking-widest transition-all shadow-sm active:scale-95 w-full sm:w-auto border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759] text-indigo-400 hover:bg-[#2d144d]' : 'bg-white border-slate-200 text-indigo-700 hover:bg-slate-50'}`}>
                         <PieChart className="w-5 h-5" /> Gráfico
                       </button>
                       <button onClick={() => setShowPurchaseModal(true)} className={`flex-1 lg:flex-none flex items-center justify-center gap-2 px-6 py-4 rounded-2xl text-sm font-black uppercase tracking-widest transition-all shadow-sm active:scale-95 w-full sm:w-auto border ${isDarkMode ? 'bg-purple-900/20 border-purple-800/50 text-purple-300 hover:bg-purple-900/40' : 'bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100'}`}>
@@ -1585,15 +1597,15 @@ export default function App() {
                 <div className="animate-in fade-in slide-in-from-bottom-4 space-y-5">
                   <div className="flex flex-col md:flex-row gap-4">
                     <div className="relative flex-1 group">
-                      <Search className={`absolute left-5 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-colors ${isDarkMode ? 'text-slate-400 group-focus-within:text-indigo-400' : 'text-slate-500 group-focus-within:text-indigo-600'}`} />
-                      <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Pesquisar transações..." className={`w-full pl-14 pr-5 py-4 rounded-[1.5rem] outline-none focus:ring-4 transition-all font-black text-lg shadow-sm border ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white focus:border-indigo-500 focus:ring-indigo-500/10 placeholder-slate-500' : 'bg-white border-slate-200 text-slate-900 focus:border-indigo-400 focus:ring-indigo-500/10 placeholder-slate-400'}`} />
+                      <Search className={`absolute left-5 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-colors ${isDarkMode ? 'text-purple-300/70 group-focus-within:text-indigo-400' : 'text-slate-500 group-focus-within:text-indigo-600'}`} />
+                      <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Pesquisar transações..." className={`w-full pl-14 pr-5 py-4 rounded-[1.5rem] outline-none focus:ring-4 transition-all font-black text-lg shadow-sm border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759] text-white focus:border-indigo-500 focus:ring-indigo-500/10 placeholder-purple-300/50' : 'bg-white border-slate-200 text-slate-900 focus:border-indigo-400 focus:ring-indigo-500/10 placeholder-slate-400'}`} />
                     </div>
                     
                     <div className="flex gap-3">
-                      <button onClick={handleGeneratePDF} disabled={isGeneratingPDF} className={`flex-1 md:flex-none flex items-center justify-center p-4 rounded-[1.5rem] transition-all shadow-sm active:scale-95 border ${isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'} ${isGeneratingPDF ? 'opacity-50 cursor-not-allowed' : ''}`} title="Gerar Relatório PDF / Imprimir">
+                      <button onClick={handleGeneratePDF} disabled={isGeneratingPDF} className={`flex-1 md:flex-none flex items-center justify-center p-4 rounded-[1.5rem] transition-all shadow-sm active:scale-95 border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759] text-purple-200 hover:bg-[#2d144d]' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'} ${isGeneratingPDF ? 'opacity-50 cursor-not-allowed' : ''}`} title="Gerar Relatório PDF / Imprimir">
                         {isGeneratingPDF ? <Loader2 className="w-6 h-6 animate-spin text-indigo-500" /> : <Printer className="w-6 h-6" />}
                       </button>
-                      <button onClick={handleExportCSV} className={`flex-1 md:flex-none flex items-center justify-center p-4 rounded-[1.5rem] transition-all shadow-sm active:scale-95 border ${isDarkMode ? 'bg-slate-800 border-slate-700 text-emerald-400 hover:bg-slate-700' : 'bg-white border-slate-200 text-emerald-600 hover:bg-emerald-50'}`} title="Exportar para Tabela Excel (XLS)">
+                      <button onClick={handleExportCSV} className={`flex-1 md:flex-none flex items-center justify-center p-4 rounded-[1.5rem] transition-all shadow-sm active:scale-95 border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759] text-emerald-400 hover:bg-[#2d144d]' : 'bg-white border-slate-200 text-emerald-600 hover:bg-emerald-50'}`} title="Exportar para Tabela Excel (XLS)">
                         <FileSpreadsheet className="w-6 h-6" />
                       </button>
                       <button onClick={generateAiInsights} className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-[1.5rem] transition-all shadow-md active:scale-95" title="Insights com IA">
@@ -1602,13 +1614,13 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className={`rounded-[2rem] overflow-hidden shadow-sm border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-                    <div className={`p-5 sm:p-6 md:p-8 border-b flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sm:gap-5 ${isDarkMode ? 'bg-slate-900/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+                  <div className={`rounded-[2rem] overflow-hidden shadow-sm border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759]' : 'bg-white border-slate-200'}`}>
+                    <div className={`p-5 sm:p-6 md:p-8 border-b flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sm:gap-5 ${isDarkMode ? 'bg-[#0b0410]/50 border-[#321759]' : 'bg-slate-50 border-slate-200'}`}>
                       <h2 className={`text-lg sm:text-xl font-black flex items-center gap-3 w-full sm:w-auto ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                         <div className={`p-2 sm:p-2.5 rounded-xl shrink-0 ${isDarkMode ? 'bg-indigo-900/50' : 'bg-indigo-100'}`}><ListOrdered className={`w-5 h-5 sm:w-6 sm:h-6 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} /></div>
                         Extrato do Mês
                       </h2>
-                      <button onClick={() => setShowCardsModal(true)} className={`flex items-center justify-center w-full md:w-auto gap-2 px-5 py-3 rounded-xl text-sm font-black uppercase tracking-widest transition-all shadow-md active:scale-95 ${isDarkMode ? 'bg-slate-700 text-white hover:bg-slate-600' : 'bg-slate-900 text-white hover:bg-black'}`}>
+                      <button onClick={() => setShowCardsModal(true)} className={`flex items-center justify-center w-full md:w-auto gap-2 px-5 py-3 rounded-xl text-sm font-black uppercase tracking-widest transition-all shadow-md active:scale-95 ${isDarkMode ? 'bg-[#2d144d] text-white hover:bg-[#3e1c66]' : 'bg-slate-900 text-white hover:bg-black'}`}>
                         <CreditCard className="w-5 h-5" /> Cartões
                       </button>
                     </div>
@@ -1616,38 +1628,37 @@ export default function App() {
                     <div className="p-0 max-h-[600px] overflow-y-auto">
                       {filteredTransactions.length === 0 ? (
                         <div className="p-20 text-center flex flex-col items-center">
-                          <div className={`w-24 h-24 rounded-[2rem] flex items-center justify-center mb-6 shadow-inner border ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-slate-100 border-transparent'}`}><ListOrdered className={`w-12 h-12 ${isDarkMode ? 'text-slate-600' : 'text-slate-400'}`} /></div>
-                          <p className={`font-black text-xl tracking-tight ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{searchTerm ? 'Nenhum resultado encontrado.' : 'Tudo limpo por aqui.'}</p>
-                          <p className={`text-base mt-2 font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>Clique no botão '+' para começar a adicionar lançamentos.</p>
+                          <div className={`w-24 h-24 rounded-[2rem] flex items-center justify-center mb-6 shadow-inner border ${isDarkMode ? 'bg-[#0b0410] border-[#1a0b2e]' : 'bg-slate-100 border-transparent'}`}><ListOrdered className={`w-12 h-12 ${isDarkMode ? 'text-purple-400/50' : 'text-slate-400'}`} /></div>
+                          <p className={`font-black text-xl tracking-tight ${isDarkMode ? 'text-purple-200' : 'text-slate-600'}`}>{searchTerm ? 'Nenhum resultado encontrado.' : 'Tudo limpo por aqui.'}</p>
                         </div>
                       ) : (
-                        <ul className={`divide-y ${isDarkMode ? 'divide-slate-700' : 'divide-slate-200/50'}`}>
+                        <ul className={`divide-y ${isDarkMode ? 'divide-[#321759]' : 'divide-slate-200/50'}`}>
                           {filteredTransactions.map((t) => {
                             const isPending = t.status === 'pending';
                             return (
-                              <li key={t.id} className={`p-5 sm:p-6 md:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-5 transition-all duration-200 ${isDarkMode ? 'hover:bg-slate-700/50' : 'hover:bg-black/5'} ${editingId === t.id ? (isDarkMode ? 'bg-amber-900/20' : 'bg-amber-50/80') : ''} ${isPending ? 'opacity-80 border-l-4 border-l-amber-400' : 'border-l-4 border-l-transparent'}`}>
+                              <li key={t.id} className={`p-5 sm:p-6 md:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-5 transition-all duration-200 ${isDarkMode ? 'hover:bg-[#2d144d]/50' : 'hover:bg-black/5'} ${editingId === t.id ? (isDarkMode ? 'bg-amber-900/20' : 'bg-amber-50/80') : ''} ${isPending ? 'opacity-80 border-l-4 border-l-amber-400' : 'border-l-4 border-l-transparent'}`}>
                                 <div className="flex items-center gap-4 sm:gap-5 overflow-hidden w-full">
-                                  <button onClick={() => toggleStatus(t.id)} className={`p-2.5 sm:p-3 rounded-2xl shrink-0 transition-transform active:scale-90 shadow-sm border ${isPending ? (isDarkMode ? 'bg-slate-800 border-amber-500 text-amber-500 hover:bg-slate-700' : 'bg-white border-amber-300 text-amber-500 hover:bg-amber-50') : (isDarkMode ? 'bg-slate-800 border-emerald-500 text-emerald-500 hover:bg-slate-700' : 'bg-white border-emerald-300 text-emerald-600 hover:bg-emerald-50')}`} title={isPending ? "Confirmar Pagamento" : "Tornar Pendente"}>
+                                  <button onClick={() => toggleStatus(t.id)} className={`p-2.5 sm:p-3 rounded-2xl shrink-0 transition-transform active:scale-90 shadow-sm border ${isPending ? (isDarkMode ? 'bg-[#1a0b2e] border-amber-500 text-amber-500 hover:bg-[#2d144d]' : 'bg-white border-amber-300 text-amber-500 hover:bg-amber-50') : (isDarkMode ? 'bg-[#1a0b2e] border-emerald-500 text-emerald-500 hover:bg-[#2d144d]' : 'bg-white border-emerald-300 text-emerald-600 hover:bg-emerald-50')}`} title={isPending ? "Confirmar Pagamento" : "Tornar Pendente"}>
                                     {isPending ? <AlertCircle className="w-6 h-6 sm:w-7 sm:h-7" /> : <CheckCircle2 className="w-6 h-6 sm:w-7 sm:h-7" />}
                                   </button>
                                   
                                   <div className="min-w-0 flex-1">
-                                    <p className={`font-black text-base sm:text-lg md:text-xl break-words tracking-tight leading-tight ${isPending ? (isDarkMode ? 'text-slate-400' : 'text-slate-500') : (isDarkMode ? 'text-white' : 'text-slate-900')}`}>{t.description}</p>
+                                    <p className={`font-black text-base sm:text-lg md:text-xl break-words tracking-tight leading-tight ${isPending ? (isDarkMode ? 'text-purple-300/70' : 'text-slate-500') : (isDarkMode ? 'text-white' : 'text-slate-900')}`}>{t.description}</p>
                                     <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1.5 sm:mt-2">
                                       <span className={`px-2 py-1 rounded-lg uppercase tracking-widest text-[9px] sm:text-[10px] font-black border ${t.type === 'expense' ? (isDarkMode ? 'bg-rose-900/30 border-rose-800/50 text-rose-300' : 'bg-rose-50 border-rose-200 text-rose-700') : t.type === 'income' ? (isDarkMode ? 'bg-emerald-900/30 border-emerald-800/50 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-700') : (isDarkMode ? 'bg-indigo-900/30 border-indigo-800/50 text-indigo-300' : 'bg-indigo-50 border-indigo-200 text-indigo-700')}`}>{t.category}</span>
-                                      <span className={`text-[10px] sm:text-xs font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>{t.date.split('-').reverse().join('/')}</span>
+                                      <span className={`text-[10px] sm:text-xs font-bold ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>{t.date.split('-').reverse().join('/')}</span>
                                       {isPending && <span className={`text-[9px] sm:text-[10px] font-black px-2 py-1 rounded-lg border uppercase tracking-widest ${isDarkMode ? 'text-amber-400 bg-amber-900/30 border-amber-800/50' : 'text-amber-600 bg-amber-50 border-amber-200'}`}>Pendente</span>}
                                     </div>
                                   </div>
                                 </div>
                                 
-                                <div className={`flex flex-row items-center justify-between sm:justify-end gap-3 sm:gap-5 w-full sm:w-auto mt-3 sm:mt-0 pt-3 sm:pt-0 sm:border-t-0 border-t ${isDarkMode ? 'border-slate-700' : 'border-slate-200/50'}`}>
+                                <div className={`flex flex-row items-center justify-between sm:justify-end gap-3 sm:gap-5 w-full sm:w-auto mt-3 sm:mt-0 pt-3 sm:pt-0 sm:border-t-0 border-t ${isDarkMode ? 'border-[#321759]' : 'border-slate-200/50'}`}>
                                   <span className={`font-black tracking-tight text-lg sm:text-xl md:text-2xl break-words max-w-[150px] sm:max-w-[200px] md:max-w-none text-right ${t.type === 'income' ? (isDarkMode ? 'text-emerald-400' : 'text-emerald-600') : t.type === 'expense' ? (isDarkMode ? 'text-rose-400' : 'text-rose-600') : (isDarkMode ? 'text-indigo-400' : 'text-indigo-600')} ${isPending ? 'opacity-60' : ''}`}>
                                     {t.type === 'income' ? '+' : '-'} {formatCurrency(t.amount)}
                                   </span>
                                   <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                                    <button onClick={() => { handleEdit(t); setShowTransactionModal(true); }} className={`p-2.5 sm:p-3 rounded-xl transition-all shadow-sm active:scale-95 border ${isDarkMode ? 'bg-slate-800 border-slate-600 text-slate-400 hover:bg-amber-900/20 hover:text-amber-400 hover:border-amber-500/50' : 'bg-white border-slate-300 text-slate-500 hover:bg-amber-50 hover:text-amber-600 hover:border-amber-400'}`}><Edit className="w-4 h-4 sm:w-5 sm:h-5" /></button>
-                                    <button onClick={() => handleDelete(t.id)} className={`p-2.5 sm:p-3 rounded-xl transition-all shadow-sm active:scale-95 border ${isDarkMode ? 'bg-slate-800 border-slate-600 text-slate-400 hover:bg-rose-900/20 hover:text-rose-400 hover:border-rose-500/50' : 'bg-white border-slate-300 text-slate-500 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-400'}`}><Trash2 className="w-4 h-4 sm:w-5 sm:h-5" /></button>
+                                    <button onClick={() => { handleEdit(t); setShowTransactionModal(true); }} className={`p-2.5 sm:p-3 rounded-xl transition-all shadow-sm active:scale-95 border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759] text-purple-300/70 hover:bg-amber-900/20 hover:text-amber-400 hover:border-amber-500/50' : 'bg-white border-slate-300 text-slate-500 hover:bg-amber-50 hover:text-amber-600 hover:border-amber-400'}`}><Edit className="w-4 h-4 sm:w-5 sm:h-5" /></button>
+                                    <button onClick={() => handleDelete(t.id)} className={`p-2.5 sm:p-3 rounded-xl transition-all shadow-sm active:scale-95 border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759] text-purple-300/70 hover:bg-rose-900/20 hover:text-rose-400 hover:border-rose-500/50' : 'bg-white border-slate-300 text-slate-500 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-400'}`}><Trash2 className="w-4 h-4 sm:w-5 sm:h-5" /></button>
                                   </div>
                                 </div>
                               </li>
@@ -1664,8 +1675,8 @@ export default function App() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 animate-in fade-in slide-in-from-bottom-4">
                   
                   {/* ORÇAMENTOS */}
-                  <div className={`rounded-[2rem] p-6 sm:p-8 shadow-sm border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-                    <div className={`flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 pb-5 gap-4 border-b ${isDarkMode ? 'border-slate-700' : 'border-slate-200/50'}`}>
+                  <div className={`rounded-[2rem] p-6 sm:p-8 shadow-sm border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759]' : 'bg-white border-slate-200'}`}>
+                    <div className={`flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 pb-5 gap-4 border-b ${isDarkMode ? 'border-[#321759]' : 'border-slate-200/50'}`}>
                       <h3 className={`font-black text-xl sm:text-2xl flex items-center gap-3 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                         <div className={`p-2 rounded-xl border shrink-0 ${isDarkMode ? 'bg-rose-900/30 border-rose-800/50' : 'bg-rose-100 border-rose-200'}`}><Target className={`w-5 h-5 sm:w-6 sm:h-6 ${isDarkMode ? 'text-rose-400' : 'text-rose-600'}`} /></div>
                         Orçamentos
@@ -1682,8 +1693,8 @@ export default function App() {
                     
                     {Object.keys(budgets).filter(c => budgets[c] > 0).length === 0 ? (
                       <div className="text-center py-12">
-                        <Target className={`w-16 h-16 mx-auto mb-4 ${isDarkMode ? 'text-slate-600' : 'text-slate-300'}`} />
-                        <p className={`text-base font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Nenhum orçamento definido.</p>
+                        <Target className={`w-16 h-16 mx-auto mb-4 ${isDarkMode ? 'text-purple-400/40' : 'text-slate-300'}`} />
+                        <p className={`text-base font-bold ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>Nenhum orçamento definido.</p>
                       </div>
                     ) : (
                       <div className="space-y-6">
@@ -1694,20 +1705,20 @@ export default function App() {
                           const isOver = catSpent > catLimit;
 
                           return (
-                            <div key={cat} className={`space-y-3 p-5 rounded-2xl group relative shadow-sm border ${isDarkMode ? 'bg-slate-900/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+                            <div key={cat} className={`space-y-3 p-5 rounded-2xl group relative shadow-sm border ${isDarkMode ? 'bg-[#0b0410]/50 border-[#321759]' : 'bg-slate-50 border-slate-200'}`}>
                               <div className="flex justify-between items-center">
                                 <span className={`font-black text-lg ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>{cat}</span>
                                 <div className="flex items-center gap-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <button onClick={() => openEditBudget(cat, catLimit)} className={`p-1.5 rounded-lg shadow-sm border transition-colors ${isDarkMode ? 'bg-slate-800 border-slate-600 text-slate-400 hover:text-amber-400' : 'bg-white border-slate-200 text-slate-400 hover:text-amber-600'}`}><Edit className="w-3.5 h-3.5" /></button>
-                                  <button onClick={() => handleDeleteBudget(cat)} className={`p-1.5 rounded-lg shadow-sm border transition-colors ${isDarkMode ? 'bg-slate-800 border-slate-600 text-slate-400 hover:text-rose-400' : 'bg-white border-slate-200 text-slate-400 hover:text-rose-600'}`}><Trash2 className="w-3.5 h-3.5" /></button>
+                                  <button onClick={() => openEditBudget(cat, catLimit)} className={`p-1.5 rounded-lg shadow-sm border transition-colors ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759] text-purple-300/70 hover:text-amber-400' : 'bg-white border-slate-200 text-slate-400 hover:text-amber-600'}`}><Edit className="w-3.5 h-3.5" /></button>
+                                  <button onClick={() => handleDeleteBudget(cat)} className={`p-1.5 rounded-lg shadow-sm border transition-colors ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759] text-purple-300/70 hover:text-rose-400' : 'bg-white border-slate-200 text-slate-400 hover:text-rose-600'}`}><Trash2 className="w-3.5 h-3.5" /></button>
                                 </div>
                               </div>
                               <div>
                                 <div className="flex justify-between items-end mb-2 gap-2">
-                                  <span className={`text-sm font-black break-words ${isOver ? (isDarkMode ? 'text-rose-400' : 'text-rose-600') : (isDarkMode ? 'text-slate-300' : 'text-slate-600')}`}>{formatCurrency(catSpent)} <span className={`font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>/ {formatCurrency(catLimit)}</span></span>
-                                  <span className={`text-xs font-black shrink-0 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>{catPercentage.toFixed(0)}%</span>
+                                  <span className={`text-sm font-black break-words ${isOver ? (isDarkMode ? 'text-rose-400' : 'text-rose-600') : (isDarkMode ? 'text-purple-200' : 'text-slate-600')}`}>{formatCurrency(catSpent)} <span className={`font-bold ${isDarkMode ? 'text-purple-300/70' : 'text-slate-400'}`}>/ {formatCurrency(catLimit)}</span></span>
+                                  <span className={`text-xs font-black shrink-0 ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>{catPercentage.toFixed(0)}%</span>
                                 </div>
-                                <div className={`w-full h-2.5 rounded-full overflow-hidden shadow-inner border ${isDarkMode ? 'bg-slate-700 border-slate-700' : 'bg-slate-200 border-slate-200/50'}`}>
+                                <div className={`w-full h-2.5 rounded-full overflow-hidden shadow-inner border ${isDarkMode ? 'bg-[#321759] border-[#321759]' : 'bg-slate-200 border-slate-200/50'}`}>
                                   <div className={`h-full transition-all duration-500 rounded-full ${isOver ? 'bg-rose-500' : catPercentage > 80 ? 'bg-amber-400' : 'bg-emerald-500'}`} style={{ width: `${catPercentage}%` }}></div>
                                 </div>
                               </div>
@@ -1719,8 +1730,8 @@ export default function App() {
                   </div>
 
                   {/* METAS */}
-                  <div className={`rounded-[2rem] p-6 sm:p-8 shadow-sm border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-                    <div className={`flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 pb-5 gap-4 border-b ${isDarkMode ? 'border-slate-700' : 'border-slate-200/50'}`}>
+                  <div className={`rounded-[2rem] p-6 sm:p-8 shadow-sm border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759]' : 'bg-white border-slate-200'}`}>
+                    <div className={`flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 pb-5 gap-4 border-b ${isDarkMode ? 'border-[#321759]' : 'border-slate-200/50'}`}>
                       <h3 className={`font-black text-xl sm:text-2xl flex items-center gap-3 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                         <div className={`p-2 rounded-xl border shrink-0 ${isDarkMode ? 'bg-emerald-900/30 border-emerald-800/50' : 'bg-emerald-100 border-emerald-200'}`}><Trophy className={`w-5 h-5 sm:w-6 sm:h-6 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`} /></div>
                         Metas & Sonhos
@@ -1732,8 +1743,8 @@ export default function App() {
                     
                     {goals.length === 0 ? (
                       <div className="text-center py-12">
-                        <Trophy className={`w-16 h-16 mx-auto mb-4 ${isDarkMode ? 'text-slate-600' : 'text-slate-300'}`} />
-                        <p className={`text-base font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Nenhuma meta criada. Comece a poupar hoje!</p>
+                        <Trophy className={`w-16 h-16 mx-auto mb-4 ${isDarkMode ? 'text-purple-400/40' : 'text-slate-300'}`} />
+                        <p className={`text-base font-bold ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>Nenhuma meta criada. Comece a poupar hoje!</p>
                       </div>
                     ) : (
                       <div className="space-y-6">
@@ -1742,16 +1753,16 @@ export default function App() {
                           const isComplete = goal.current >= goal.target;
                           
                           return (
-                            <div key={goal.id} className={`p-6 rounded-2xl relative group shadow-sm border ${isDarkMode ? 'bg-slate-900/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+                            <div key={goal.id} className={`p-6 rounded-2xl relative group shadow-sm border ${isDarkMode ? 'bg-[#0b0410]/50 border-[#321759]' : 'bg-slate-50 border-slate-200'}`}>
                               <div className="absolute top-4 right-4 flex gap-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={() => openEditGoal(goal)} className={`p-2 rounded-lg shadow-sm border transition-colors ${isDarkMode ? 'bg-slate-800 border-slate-600 text-slate-400 hover:text-amber-400' : 'bg-white border-slate-200 text-slate-400 hover:text-amber-600'}`}><Edit className="w-4 h-4"/></button>
+                                <button onClick={() => openEditGoal(goal)} className={`p-2 rounded-lg shadow-sm border transition-colors ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759] text-purple-300/70 hover:text-amber-400' : 'bg-white border-slate-200 text-slate-400 hover:text-amber-600'}`}><Edit className="w-4 h-4"/></button>
                                 <button onClick={() => {
                                   showConfirm('Excluir', `Deseja excluir a meta "${goal.name}"?`, () => {
                                     const newGoals = goals.filter(g => g.id !== goal.id);
                                     setGoals(newGoals);
                                     saveCloudConfig({ goals: newGoals });
                                   });
-                                }} className={`p-2 rounded-lg shadow-sm border transition-colors ${isDarkMode ? 'bg-slate-800 border-slate-600 text-slate-400 hover:text-rose-400' : 'bg-white border-slate-200 text-slate-400 hover:text-rose-600'}`}><Trash2 className="w-4 h-4"/></button>
+                                }} className={`p-2 rounded-lg shadow-sm border transition-colors ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759] text-purple-300/70 hover:text-rose-400' : 'bg-white border-slate-200 text-slate-400 hover:text-rose-600'}`}><Trash2 className="w-4 h-4"/></button>
                               </div>
                               
                               <h4 className={`font-black text-lg mb-2 flex items-center gap-2 mr-16 sm:mr-0 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
@@ -1763,10 +1774,10 @@ export default function App() {
                                 )}
                               </h4>
                               <div className="flex justify-between items-end mb-3 gap-2">
-                                <span className={`text-sm font-black break-words ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>{formatCurrency(goal.current)} <span className={`font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>de {formatCurrency(goal.target)}</span></span>
-                                <span className={`text-xs font-black shrink-0 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{percentage.toFixed(1)}%</span>
+                                <span className={`text-sm font-black break-words ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>{formatCurrency(goal.current)} <span className={`font-bold ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>de {formatCurrency(goal.target)}</span></span>
+                                <span className={`text-xs font-black shrink-0 ${isDarkMode ? 'text-purple-300/70' : 'text-slate-600'}`}>{percentage.toFixed(1)}%</span>
                               </div>
-                              <div className={`w-full h-3 rounded-full overflow-hidden mb-5 shadow-inner border ${isDarkMode ? 'bg-slate-700 border-slate-700' : 'bg-slate-200 border-slate-200/50'}`}>
+                              <div className={`w-full h-3 rounded-full overflow-hidden mb-5 shadow-inner border ${isDarkMode ? 'bg-[#321759] border-[#321759]' : 'bg-slate-200 border-slate-200/50'}`}>
                                 <div className="h-full bg-emerald-500 transition-all duration-1000 rounded-full" style={{ width: `${percentage}%` }}></div>
                               </div>
                               {!isComplete && (
@@ -1780,7 +1791,7 @@ export default function App() {
                                       saveCloudConfig({ goals: newGoals });
                                     }
                                   });
-                                }} className={`w-full py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-colors shadow-sm border ${isDarkMode ? 'bg-slate-800 border-slate-600 text-slate-300 hover:text-emerald-400 hover:border-emerald-800/50' : 'bg-white border-slate-300 text-slate-700 hover:text-emerald-600 hover:border-emerald-300'}`}>
+                                }} className={`w-full py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-colors shadow-sm border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759] text-purple-200 hover:text-emerald-400 hover:border-emerald-800/50' : 'bg-white border-slate-300 text-slate-700 hover:text-emerald-600 hover:border-emerald-300'}`}>
                                   + Adicionar Valor
                                 </button>
                               )}
@@ -1794,8 +1805,8 @@ export default function App() {
               )}
 
               {activeTab === 'simulador' && (
-                <div className={`rounded-[2rem] p-6 sm:p-8 md:p-10 animate-in fade-in slide-in-from-bottom-4 shadow-sm border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-                  <h3 className={`font-black text-xl sm:text-2xl flex items-center gap-3 mb-8 sm:mb-10 pb-5 border-b ${isDarkMode ? 'text-white border-slate-700' : 'text-slate-900 border-slate-200/50'}`}>
+                <div className={`rounded-[2rem] p-6 sm:p-8 md:p-10 animate-in fade-in slide-in-from-bottom-4 shadow-sm border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759]' : 'bg-white border-slate-200'}`}>
+                  <h3 className={`font-black text-xl sm:text-2xl flex items-center gap-3 mb-8 sm:mb-10 pb-5 border-b ${isDarkMode ? 'text-white border-[#321759]' : 'text-slate-900 border-slate-200/50'}`}>
                     <div className={`p-2 rounded-xl border shrink-0 ${isDarkMode ? 'bg-indigo-900/30 border-indigo-800/50' : 'bg-indigo-100 border-indigo-200'}`}><TrendingUp className={`w-5 h-5 sm:w-6 sm:h-6 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} /></div>
                     Simulador de Investimentos
                   </h3>
@@ -1803,32 +1814,32 @@ export default function App() {
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
                     <div className="space-y-8">
                       <div>
-                        <label className={`block text-xs font-black uppercase tracking-widest mb-3 flex justify-between ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Valor Inicial <span className={isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}>{formatCurrency(simInitial)}</span></label>
-                        <input type="range" min="0" max="50000" step="500" value={simInitial} onChange={(e) => setSimInitial(Number(e.target.value))} className={`w-full h-2 rounded-lg appearance-none cursor-pointer ${isDarkMode ? 'accent-indigo-500 bg-slate-700' : 'accent-indigo-600 bg-slate-200'}`} />
+                        <label className={`block text-xs font-black uppercase tracking-widest mb-3 flex justify-between ${isDarkMode ? 'text-purple-300/70' : 'text-slate-600'}`}>Valor Inicial <span className={isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}>{formatCurrency(simInitial)}</span></label>
+                        <input type="range" min="0" max="50000" step="500" value={simInitial} onChange={(e) => setSimInitial(Number(e.target.value))} className={`w-full h-2 rounded-lg appearance-none cursor-pointer ${isDarkMode ? 'accent-indigo-500 bg-[#2d144d]' : 'accent-indigo-600 bg-slate-200'}`} />
                       </div>
                       <div>
-                        <label className={`block text-xs font-black uppercase tracking-widest mb-3 flex justify-between ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Aporte Mensal <span className={isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}>{formatCurrency(simMonthly)}</span></label>
-                        <input type="range" min="0" max="10000" step="100" value={simMonthly} onChange={(e) => setSimMonthly(Number(e.target.value))} className={`w-full h-2 rounded-lg appearance-none cursor-pointer ${isDarkMode ? 'accent-indigo-500 bg-slate-700' : 'accent-indigo-600 bg-slate-200'}`} />
+                        <label className={`block text-xs font-black uppercase tracking-widest mb-3 flex justify-between ${isDarkMode ? 'text-purple-300/70' : 'text-slate-600'}`}>Aporte Mensal <span className={isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}>{formatCurrency(simMonthly)}</span></label>
+                        <input type="range" min="0" max="10000" step="100" value={simMonthly} onChange={(e) => setSimMonthly(Number(e.target.value))} className={`w-full h-2 rounded-lg appearance-none cursor-pointer ${isDarkMode ? 'accent-indigo-500 bg-[#2d144d]' : 'accent-indigo-600 bg-slate-200'}`} />
                       </div>
                       <div>
-                        <label className={`block text-xs font-black uppercase tracking-widest mb-3 flex justify-between ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Taxa de Juro Mensal (%) <span className={isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}>{simRate.toFixed(2)}%</span></label>
-                        <input type="range" min="0.1" max="2.0" step="0.1" value={simRate} onChange={(e) => setSimRate(Number(e.target.value))} className={`w-full h-2 rounded-lg appearance-none cursor-pointer ${isDarkMode ? 'accent-indigo-500 bg-slate-700' : 'accent-indigo-600 bg-slate-200'}`} />
-                        <p className={`text-xs font-bold mt-2 p-2 rounded-lg border ${isDarkMode ? 'text-slate-400 bg-slate-900/50 border-slate-700' : 'text-slate-500 bg-slate-50 border-slate-200/50'}`}>Ex: Poupança ~0.5%, Tesouro/CDB ~0.8%, FIIs ~1.0%</p>
+                        <label className={`block text-xs font-black uppercase tracking-widest mb-3 flex justify-between ${isDarkMode ? 'text-purple-300/70' : 'text-slate-600'}`}>Taxa de Juro Mensal (%) <span className={isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}>{simRate.toFixed(2)}%</span></label>
+                        <input type="range" min="0.1" max="2.0" step="0.1" value={simRate} onChange={(e) => setSimRate(Number(e.target.value))} className={`w-full h-2 rounded-lg appearance-none cursor-pointer ${isDarkMode ? 'accent-indigo-500 bg-[#2d144d]' : 'accent-indigo-600 bg-slate-200'}`} />
+                        <p className={`text-xs font-bold mt-2 p-2 rounded-lg border ${isDarkMode ? 'text-purple-300/70 bg-[#0b0410]/50 border-[#321759]' : 'text-slate-500 bg-slate-50 border-slate-200/50'}`}>Ex: Poupança ~0.5%, Tesouro/CDB ~0.8%, FIIs ~1.0%</p>
                       </div>
                       <div>
-                        <label className={`block text-xs font-black uppercase tracking-widest mb-3 flex justify-between ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Tempo <span className={isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}>{simYears} {simYears === 1 ? 'Ano' : 'Anos'}</span></label>
-                        <input type="range" min="1" max="30" step="1" value={simYears} onChange={(e) => setSimYears(Number(e.target.value))} className={`w-full h-2 rounded-lg appearance-none cursor-pointer ${isDarkMode ? 'accent-indigo-500 bg-slate-700' : 'accent-indigo-600 bg-slate-200'}`} />
+                        <label className={`block text-xs font-black uppercase tracking-widest mb-3 flex justify-between ${isDarkMode ? 'text-purple-300/70' : 'text-slate-600'}`}>Tempo <span className={isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}>{simYears} {simYears === 1 ? 'Ano' : 'Anos'}</span></label>
+                        <input type="range" min="1" max="30" step="1" value={simYears} onChange={(e) => setSimYears(Number(e.target.value))} className={`w-full h-2 rounded-lg appearance-none cursor-pointer ${isDarkMode ? 'accent-indigo-500 bg-[#2d144d]' : 'accent-indigo-600 bg-slate-200'}`} />
                       </div>
                     </div>
 
-                    <div className="bg-slate-900 dark:bg-[#0b0410] rounded-[2rem] p-6 sm:p-10 flex flex-col justify-center items-center text-center relative overflow-hidden shadow-xl border border-slate-800 dark:border-slate-800/50 mt-6 lg:mt-0">
+                    <div className="bg-slate-900 dark:bg-[#050108] rounded-[2rem] p-6 sm:p-10 flex flex-col justify-center items-center text-center relative overflow-hidden shadow-xl border border-slate-800 dark:border-[#1a0b2e] mt-6 lg:mt-0">
                       <div className="absolute inset-0 bg-grid-pattern opacity-20 mask-radial"></div>
                       <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/10 to-purple-500/10 pointer-events-none"></div>
                       
                       <h4 className="text-indigo-300 font-black uppercase tracking-widest text-[10px] sm:text-xs mb-3 relative z-10">Valor Final Estimado</h4>
                       <p className="text-4xl sm:text-5xl md:text-6xl font-black text-white tracking-tight relative z-10 mb-6 sm:mb-8 drop-shadow-lg break-words px-2 w-full leading-none">{formatCurrency(simFutureValue)}</p>
                       
-                      <div className="w-full bg-slate-800/80 backdrop-blur-md rounded-2xl p-4 sm:p-5 grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 relative z-10 border border-slate-700">
+                      <div className="w-full bg-slate-800/80 dark:bg-[#160a22]/80 backdrop-blur-md rounded-2xl p-4 sm:p-5 grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 relative z-10 border border-slate-700 dark:border-[#321759]">
                         <div>
                           <p className="text-slate-400 text-[9px] sm:text-[10px] uppercase font-black tracking-widest mb-1 sm:mb-2">Total Investido</p>
                           <p className="text-white font-black text-base sm:text-lg break-words">{formatCurrency(simInitial + (simMonthly * simYears * 12))}</p>
@@ -1857,30 +1868,30 @@ export default function App() {
 
         {/* MODAL DE ORÇAMENTOS */}
         {showBudgetModal && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
-            <div className={`rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden flex flex-col animate-in zoom-in-95 border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-              <div className={`p-6 border-b flex justify-between items-center ${isDarkMode ? 'bg-slate-900/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+          <div className="fixed inset-0 bg-[#0b0410]/80 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
+            <div className={`rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden flex flex-col animate-in zoom-in-95 border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759]' : 'bg-white border-slate-200'}`}>
+              <div className={`p-6 border-b flex justify-between items-center ${isDarkMode ? 'bg-[#0b0410]/50 border-[#321759]' : 'bg-slate-50 border-slate-200'}`}>
                 <h3 className={`font-black flex items-center gap-3 text-xl tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                   <div className={`p-2.5 rounded-xl ${isDarkMode ? 'bg-rose-900/30' : 'bg-rose-100'}`}><Target className={`w-6 h-6 ${isDarkMode ? 'text-rose-400' : 'text-rose-600'}`} /></div> 
                   Orçamento
                 </h3>
-                <button onClick={() => setShowBudgetModal(false)} className={`p-2 rounded-xl transition-colors ${isDarkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-400' : 'bg-white hover:bg-slate-100 text-slate-600 border border-slate-200'}`}><X className="w-5 h-5" /></button>
+                <button onClick={() => setShowBudgetModal(false)} className={`p-2 rounded-xl transition-colors border ${isDarkMode ? 'bg-[#1a0b2e] hover:bg-[#2d144d] text-purple-300/70 border-[#321759]' : 'bg-white hover:bg-slate-100 text-slate-600 border-slate-200'}`}><X className="w-5 h-5" /></button>
               </div>
               <div className="p-8">
                 <form onSubmit={handleSaveBudget} className="space-y-6">
                   <div>
-                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Categoria</label>
+                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>Categoria</label>
                     <div className="relative">
-                      <select required value={budgetForm.category} onChange={e => setBudgetForm({...budgetForm, category: e.target.value})} className={`w-full px-5 py-4 rounded-2xl outline-none focus:ring-4 transition-all font-bold appearance-none border ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white focus:border-indigo-500 focus:ring-indigo-500/10' : 'bg-white border-slate-300 text-slate-900 focus:border-indigo-500 focus:ring-indigo-500/10 shadow-sm'}`}>
+                      <select required value={budgetForm.category} onChange={e => setBudgetForm({...budgetForm, category: e.target.value})} className={`w-full px-5 py-4 rounded-2xl outline-none focus:ring-4 transition-all font-bold appearance-none border ${isDarkMode ? 'bg-[#0b0410] border-[#321759] text-white focus:border-indigo-500 focus:ring-indigo-500/10' : 'bg-white border-slate-300 text-slate-900 focus:border-indigo-500 focus:ring-indigo-500/10 shadow-sm'}`}>
                         <option value="" disabled>Selecione...</option>
                         {categories.expense.map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
-                      <div className="absolute inset-y-0 right-5 flex items-center pointer-events-none"><ChevronDown className={`w-5 h-5 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}/></div>
+                      <div className="absolute inset-y-0 right-5 flex items-center pointer-events-none"><ChevronDown className={`w-5 h-5 ${isDarkMode ? 'text-purple-300/70' : 'text-slate-400'}`}/></div>
                     </div>
                   </div>
                   <div>
-                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Limite Máximo (R$)</label>
-                    <input type="number" step="0.01" required value={budgetForm.limit} onChange={e => setBudgetForm({...budgetForm, limit: e.target.value})} placeholder="Ex: 500" className={`w-full px-5 py-4 rounded-2xl outline-none focus:ring-4 transition-all font-bold border ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500 focus:border-indigo-500 focus:ring-indigo-500/10' : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:ring-indigo-500/10 shadow-sm'}`} />
+                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>Limite Máximo (R$)</label>
+                    <input type="number" step="0.01" required value={budgetForm.limit} onChange={e => setBudgetForm({...budgetForm, limit: e.target.value})} placeholder="Ex: 500" className={`w-full px-5 py-4 rounded-2xl outline-none focus:ring-4 transition-all font-bold border ${isDarkMode ? 'bg-[#0b0410] border-[#321759] text-white placeholder-purple-300/30 focus:border-indigo-500 focus:ring-indigo-500/10' : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:ring-indigo-500/10 shadow-sm'}`} />
                   </div>
                   <button type="submit" className={`w-full py-4 text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl transition-all active:scale-95 ${isDarkMode ? 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-900/50' : 'bg-slate-900 hover:bg-black shadow-slate-900/20'}`}>Salvar Orçamento</button>
                 </form>
@@ -1891,24 +1902,24 @@ export default function App() {
 
         {/* MODAL DE METAS */}
         {showGoalModal && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
-            <div className={`rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden flex flex-col animate-in zoom-in-95 border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-              <div className={`p-6 border-b flex justify-between items-center ${isDarkMode ? 'bg-slate-900/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+          <div className="fixed inset-0 bg-[#0b0410]/80 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
+            <div className={`rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden flex flex-col animate-in zoom-in-95 border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759]' : 'bg-white border-slate-200'}`}>
+              <div className={`p-6 border-b flex justify-between items-center ${isDarkMode ? 'bg-[#0b0410]/50 border-[#321759]' : 'bg-slate-50 border-slate-200'}`}>
                 <h3 className={`font-black flex items-center gap-3 text-xl tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                   <div className={`p-2.5 rounded-xl ${isDarkMode ? 'bg-emerald-900/30' : 'bg-emerald-100'}`}><Trophy className={`w-6 h-6 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`} /></div> 
                   {goalForm.id ? 'Editar Meta' : 'Nova Meta'}
                 </h3>
-                <button onClick={() => setShowGoalModal(false)} className={`p-2 rounded-xl transition-colors ${isDarkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-400' : 'bg-white hover:bg-slate-100 text-slate-600 border border-slate-200'}`}><X className="w-5 h-5" /></button>
+                <button onClick={() => setShowGoalModal(false)} className={`p-2 rounded-xl transition-colors border ${isDarkMode ? 'bg-[#1a0b2e] hover:bg-[#2d144d] text-purple-300/70 border-[#321759]' : 'bg-white hover:bg-slate-100 text-slate-600 border-slate-200'}`}><X className="w-5 h-5" /></button>
               </div>
               <div className="p-8">
                 <form onSubmit={handleSaveGoal} className="space-y-6">
                   <div>
-                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Nome do Objetivo</label>
-                    <input type="text" required value={goalForm.name} onChange={e => setGoalForm({...goalForm, name: e.target.value})} placeholder="Ex: Viagem à Europa" className={`w-full px-5 py-4 rounded-2xl outline-none focus:ring-4 transition-all font-bold border ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500 focus:border-indigo-500 focus:ring-indigo-500/10' : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:ring-indigo-500/10 shadow-sm'}`} />
+                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>Nome do Objetivo</label>
+                    <input type="text" required value={goalForm.name} onChange={e => setGoalForm({...goalForm, name: e.target.value})} placeholder="Ex: Viagem à Europa" className={`w-full px-5 py-4 rounded-2xl outline-none focus:ring-4 transition-all font-bold border ${isDarkMode ? 'bg-[#0b0410] border-[#321759] text-white placeholder-purple-300/30 focus:border-indigo-500 focus:ring-indigo-500/10' : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:ring-indigo-500/10 shadow-sm'}`} />
                   </div>
                   <div>
-                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Valor Necessário (R$)</label>
-                    <input type="number" step="0.01" required value={goalForm.target} onChange={e => setGoalForm({...goalForm, target: e.target.value})} placeholder="Ex: 5000" className={`w-full px-5 py-4 rounded-2xl outline-none focus:ring-4 transition-all font-bold border ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500 focus:border-indigo-500 focus:ring-indigo-500/10' : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:ring-indigo-500/10 shadow-sm'}`} />
+                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>Valor Necessário (R$)</label>
+                    <input type="number" step="0.01" required value={goalForm.target} onChange={e => setGoalForm({...goalForm, target: e.target.value})} placeholder="Ex: 5000" className={`w-full px-5 py-4 rounded-2xl outline-none focus:ring-4 transition-all font-bold border ${isDarkMode ? 'bg-[#0b0410] border-[#321759] text-white placeholder-purple-300/30 focus:border-indigo-500 focus:ring-indigo-500/10' : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:ring-indigo-500/10 shadow-sm'}`} />
                   </div>
                   <button type="submit" className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl transition-all active:scale-95">Salvar Meta</button>
                 </form>
@@ -1919,55 +1930,55 @@ export default function App() {
 
         {/* MODAL DE TRANSAÇÃO */}
         {showTransactionModal && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-[200]">
-            <div className={`w-full sm:rounded-[2rem] rounded-t-[2rem] sm:max-w-md shadow-2xl overflow-hidden animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-4 duration-300 flex flex-col max-h-[90vh] border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-              <div className={`p-5 sm:p-6 border-b flex justify-between items-center sticky top-0 z-10 ${isDarkMode ? 'bg-slate-900/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+          <div className="fixed inset-0 bg-[#0b0410]/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-[200]">
+            <div className={`w-full sm:rounded-[2rem] rounded-t-[2rem] sm:max-w-md shadow-2xl overflow-hidden animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-4 duration-300 flex flex-col max-h-[90vh] border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759]' : 'bg-white border-slate-200'}`}>
+              <div className={`p-5 sm:p-6 border-b flex justify-between items-center sticky top-0 z-10 ${isDarkMode ? 'bg-[#0b0410]/50 border-[#321759]' : 'bg-slate-50 border-slate-200'}`}>
                 <h2 className={`text-lg sm:text-xl font-black tracking-tight flex items-center gap-3 ${editingId ? (isDarkMode ? 'text-amber-400' : 'text-amber-600') : (isDarkMode ? 'text-white' : 'text-slate-900')}`}>
                   <div className={`p-2 sm:p-2.5 rounded-xl shadow-sm ${editingId ? (isDarkMode ? 'bg-amber-900/30' : 'bg-amber-100') : (isDarkMode ? 'bg-indigo-900/30' : 'bg-indigo-100')}`}>
                     {editingId ? <Edit className={`w-5 h-5 ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`} /> : <Plus className={`w-5 h-5 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} />}
                   </div>
                   {editingId ? 'Editar Registo' : 'Novo Registo'}
                 </h2>
-                <button onClick={() => { resetForm(); setShowTransactionModal(false); }} className={`p-2 rounded-xl transition-colors ${isDarkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-400' : 'bg-white hover:bg-slate-100 text-slate-600 border border-slate-200'}`}><X className="w-5 h-5" /></button>
+                <button onClick={() => { resetForm(); setShowTransactionModal(false); }} className={`p-2 rounded-xl transition-colors border ${isDarkMode ? 'bg-[#1a0b2e] hover:bg-[#2d144d] text-purple-300/70 border-[#321759]' : 'bg-white hover:bg-slate-100 text-slate-600 border-slate-200'}`}><X className="w-5 h-5" /></button>
               </div>
               
               <div className="p-5 sm:p-6 overflow-y-auto">
                 <form onSubmit={handleSaveTransaction} className="space-y-5 sm:space-y-6">
-                  <div className={`flex gap-2 p-1.5 rounded-2xl shadow-inner border ${isDarkMode ? 'bg-slate-900/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
-                    <button type="button" onClick={() => setType('income')} className={`flex-1 py-3 text-[10px] sm:text-xs font-black uppercase tracking-widest rounded-xl transition-all ${type === 'income' ? (isDarkMode ? 'bg-slate-700 text-emerald-400 shadow-md border border-slate-600' : 'bg-white text-emerald-600 shadow-md border border-slate-200') : (isDarkMode ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')}`}>Entrada</button>
-                    <button type="button" onClick={() => setType('expense')} className={`flex-1 py-3 text-[10px] sm:text-xs font-black uppercase tracking-widest rounded-xl transition-all ${type === 'expense' ? (isDarkMode ? 'bg-slate-700 text-rose-400 shadow-md border border-slate-600' : 'bg-white text-rose-600 shadow-md border border-slate-200') : (isDarkMode ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')}`}>Gasto</button>
-                    <button type="button" onClick={() => setType('investment')} className={`flex-1 py-3 text-[10px] sm:text-xs font-black uppercase tracking-widest rounded-xl transition-all ${type === 'investment' ? (isDarkMode ? 'bg-slate-700 text-indigo-400 shadow-md border border-slate-600' : 'bg-white text-indigo-600 shadow-md border border-slate-200') : (isDarkMode ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')}`}>Investir</button>
+                  <div className={`flex gap-2 p-1.5 rounded-2xl shadow-inner border ${isDarkMode ? 'bg-[#0b0410]/50 border-[#321759]' : 'bg-slate-50 border-slate-200'}`}>
+                    <button type="button" onClick={() => setType('income')} className={`flex-1 py-3 text-[10px] sm:text-xs font-black uppercase tracking-widest rounded-xl transition-all ${type === 'income' ? (isDarkMode ? 'bg-[#2d144d] text-emerald-400 shadow-md border border-[#441f74]' : 'bg-white text-emerald-600 shadow-md border border-slate-200') : (isDarkMode ? 'text-purple-300/70 hover:text-purple-200' : 'text-slate-500 hover:text-slate-700')}`}>Entrada</button>
+                    <button type="button" onClick={() => setType('expense')} className={`flex-1 py-3 text-[10px] sm:text-xs font-black uppercase tracking-widest rounded-xl transition-all ${type === 'expense' ? (isDarkMode ? 'bg-[#2d144d] text-rose-400 shadow-md border border-[#441f74]' : 'bg-white text-rose-600 shadow-md border border-slate-200') : (isDarkMode ? 'text-purple-300/70 hover:text-purple-200' : 'text-slate-500 hover:text-slate-700')}`}>Gasto</button>
+                    <button type="button" onClick={() => setType('investment')} className={`flex-1 py-3 text-[10px] sm:text-xs font-black uppercase tracking-widest rounded-xl transition-all ${type === 'investment' ? (isDarkMode ? 'bg-[#2d144d] text-indigo-400 shadow-md border border-[#441f74]' : 'bg-white text-indigo-600 shadow-md border border-slate-200') : (isDarkMode ? 'text-purple-300/70 hover:text-purple-200' : 'text-slate-500 hover:text-slate-700')}`}>Investir</button>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
                     <div>
-                      <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Valor (R$)</label>
-                      <input type="number" step="0.01" required value={amount} onChange={(e) => setAmount(e.target.value)} className={`w-full px-4 sm:px-5 py-3 sm:py-4 rounded-2xl outline-none focus:ring-4 transition-all font-black text-base sm:text-lg border ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500 focus:border-indigo-500 focus:ring-indigo-500/10' : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:ring-indigo-500/10 shadow-sm'}`} placeholder="0.00" autoFocus />
+                      <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>Valor (R$)</label>
+                      <input type="number" step="0.01" required value={amount} onChange={(e) => setAmount(e.target.value)} className={`w-full px-4 sm:px-5 py-3 sm:py-4 rounded-2xl outline-none focus:ring-4 transition-all font-black text-base sm:text-lg border ${isDarkMode ? 'bg-[#0b0410] border-[#321759] text-white placeholder-purple-300/30 focus:border-indigo-500 focus:ring-indigo-500/10' : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:ring-indigo-500/10 shadow-sm'}`} placeholder="0.00" autoFocus />
                     </div>
                     <div>
-                      <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Data</label>
-                      <input type="date" required value={date} onChange={(e) => setDate(e.target.value)} className={`w-full px-4 sm:px-5 py-3 sm:py-4 rounded-2xl outline-none focus:ring-4 transition-all font-bold text-sm sm:text-base border ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white focus:border-indigo-500 focus:ring-indigo-500/10' : 'bg-white border-slate-300 text-slate-900 focus:border-indigo-500 focus:ring-indigo-500/10 shadow-sm'}`} />
+                      <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>Data</label>
+                      <input type="date" required value={date} onChange={(e) => setDate(e.target.value)} className={`w-full px-4 sm:px-5 py-3 sm:py-4 rounded-2xl outline-none focus:ring-4 transition-all font-bold text-sm sm:text-base border ${isDarkMode ? 'bg-[#0b0410] border-[#321759] text-white focus:border-indigo-500 focus:ring-indigo-500/10' : 'bg-white border-slate-300 text-slate-900 focus:border-indigo-500 focus:ring-indigo-500/10 shadow-sm'}`} />
                     </div>
                   </div>
 
                   <div>
-                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 flex justify-between items-center ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 flex justify-between items-center ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>
                       <span>Descrição</span>
-                      <button type="button" onClick={handleAiCategorize} disabled={isCategorizing || !description} className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded transition-colors ${!description ? 'opacity-50 cursor-not-allowed' : ''} ${isDarkMode ? 'bg-indigo-900/50 text-indigo-400 hover:bg-indigo-800' : 'bg-indigo-100 text-indigo-600 hover:bg-indigo-200'}`} title="Auto-categorizar com IA">
+                      <button type="button" onClick={handleAiCategorize} disabled={isCategorizing || !description} className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded transition-colors border ${!description ? 'opacity-50 cursor-not-allowed' : ''} ${isDarkMode ? 'bg-indigo-900/30 border-indigo-800/50 text-indigo-400 hover:bg-indigo-900/50' : 'bg-indigo-50 border-indigo-200 text-indigo-600 hover:bg-indigo-100'}`} title="Auto-categorizar com IA">
                         {isCategorizing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />} IA
                       </button>
                     </label>
-                    <input type="text" required value={description} onChange={(e) => handleDescriptionChange(e.target.value)} className={`w-full px-4 sm:px-5 py-3 sm:py-4 rounded-2xl outline-none focus:ring-4 transition-all font-bold text-sm sm:text-base border ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500 focus:border-indigo-500 focus:ring-indigo-500/10' : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:ring-indigo-500/10 shadow-sm'}`} placeholder="Ex: Ifood, Gasolina, Luz..." />
+                    <input type="text" required value={description} onChange={(e) => handleDescriptionChange(e.target.value)} className={`w-full px-4 sm:px-5 py-3 sm:py-4 rounded-2xl outline-none focus:ring-4 transition-all font-bold text-sm sm:text-base border ${isDarkMode ? 'bg-[#0b0410] border-[#321759] text-white placeholder-purple-300/30 focus:border-indigo-500 focus:ring-indigo-500/10' : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:ring-indigo-500/10 shadow-sm'}`} placeholder="Ex: Ifood, Gasolina, Luz..." />
                   </div>
 
                   <div>
-                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Categoria / Cartão</label>
+                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>Categoria / Cartão</label>
                     <div className="flex gap-2 sm:gap-3">
                       <div className="relative w-full">
-                        <select value={category} onChange={(e) => setCategory(e.target.value)} className={`w-full px-4 sm:px-5 py-3 sm:py-4 rounded-2xl outline-none focus:ring-4 transition-all font-bold appearance-none text-sm sm:text-base border ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white focus:border-indigo-500 focus:ring-indigo-500/10' : 'bg-white border-slate-300 text-slate-900 focus:border-indigo-500 focus:ring-indigo-500/10 shadow-sm'}`}>
+                        <select value={category} onChange={(e) => setCategory(e.target.value)} className={`w-full px-4 sm:px-5 py-3 sm:py-4 rounded-2xl outline-none focus:ring-4 transition-all font-bold appearance-none text-sm sm:text-base border ${isDarkMode ? 'bg-[#0b0410] border-[#321759] text-white focus:border-indigo-500 focus:ring-indigo-500/10' : 'bg-white border-slate-300 text-slate-900 focus:border-indigo-500 focus:ring-indigo-500/10 shadow-sm'}`}>
                           {categories[type] && categories[type].map((cat, idx) => <option key={idx} value={cat}>{cat}</option>)}
                         </select>
-                        <div className="absolute inset-y-0 right-4 sm:right-5 flex items-center pointer-events-none"><ChevronDown className={`w-4 h-4 sm:w-5 sm:h-5 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}/></div>
+                        <div className="absolute inset-y-0 right-4 sm:right-5 flex items-center pointer-events-none"><ChevronDown className={`w-4 h-4 sm:w-5 sm:h-5 ${isDarkMode ? 'text-purple-300/70' : 'text-slate-400'}`}/></div>
                       </div>
                       <button type="button" onClick={handleAddCategory} className={`px-4 sm:px-5 py-3 sm:py-4 rounded-2xl transition-colors shadow-md active:scale-95 flex items-center justify-center shrink-0 ${isDarkMode ? 'bg-indigo-600 hover:bg-indigo-500 text-white' : 'bg-slate-900 hover:bg-black text-white'}`} title="Criar Nova Categoria">
                         <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -1975,38 +1986,38 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className={`flex items-center gap-3 sm:gap-4 p-4 sm:p-5 rounded-2xl border shadow-sm cursor-pointer transition-colors group ${isDarkMode ? 'bg-slate-900/50 border-slate-700 hover:border-indigo-500/50' : 'bg-slate-50 border-slate-200/50 hover:border-indigo-300'}`} onClick={() => setIsPaid(!isPaid)}>
-                    <div className={`p-2 sm:p-2.5 rounded-xl transition-colors shadow-sm border ${isPaid ? (isDarkMode ? 'bg-emerald-900/30 border-emerald-800 text-emerald-400' : 'bg-emerald-50 border-emerald-200 text-emerald-600') : (isDarkMode ? 'bg-slate-800 border-slate-600 text-slate-400' : 'bg-white border-slate-200 text-slate-400')}`}>
+                  <div className={`flex items-center gap-3 sm:gap-4 p-4 sm:p-5 rounded-2xl border shadow-sm cursor-pointer transition-colors group ${isDarkMode ? 'bg-[#0b0410]/50 border-[#321759] hover:border-indigo-500/50' : 'bg-slate-50 border-slate-200/50 hover:border-indigo-300'}`} onClick={() => setIsPaid(!isPaid)}>
+                    <div className={`p-2 sm:p-2.5 rounded-xl transition-colors shadow-sm border ${isPaid ? (isDarkMode ? 'bg-emerald-900/30 border-emerald-800 text-emerald-400' : 'bg-emerald-50 border-emerald-200 text-emerald-600') : (isDarkMode ? 'bg-[#1a0b2e] border-[#321759] text-purple-300/70' : 'bg-white border-slate-200 text-slate-400')}`}>
                       {isPaid ? <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6" /> : <Circle className="w-5 h-5 sm:w-6 sm:h-6" />}
                     </div>
                     <div className="flex flex-col">
                       <span className={`text-sm sm:text-base font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{isPaid ? 'Efetivado / Pago' : 'Agendado / Pendente'}</span>
-                      <span className={`text-[9px] sm:text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>{isPaid ? 'Afeta o Saldo Real' : 'Apenas Previsão'}</span>
+                      <span className={`text-[9px] sm:text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>{isPaid ? 'Afeta o Saldo Real' : 'Apenas Previsão'}</span>
                     </div>
                   </div>
 
                   {(type === 'expense' || type === 'income') && !editingId && (
-                    <div className={`p-4 sm:p-5 rounded-2xl shadow-inner border ${isDarkMode ? 'bg-slate-900/50 border-slate-700' : 'bg-slate-50 border-slate-200/50'}`}>
+                    <div className={`p-4 sm:p-5 rounded-2xl shadow-inner border ${isDarkMode ? 'bg-[#0b0410]/50 border-[#321759]' : 'bg-slate-50 border-slate-200/50'}`}>
                       <label className="flex items-center gap-3 cursor-pointer">
-                        <input type="checkbox" checked={isInstallment} onChange={(e) => setIsInstallment(e.target.checked)} className={`w-4 h-4 sm:w-5 sm:h-5 rounded-md focus:ring-indigo-500 border-slate-300 ${isDarkMode ? 'bg-slate-800 border-slate-600 text-indigo-500' : 'text-indigo-600'}`} />
-                        <span className={`text-xs sm:text-sm font-black ${isDarkMode ? 'text-slate-300' : 'text-slate-800'}`}>{type === 'expense' ? 'Parcelar compra?' : 'Receber parcelado?'}</span>
+                        <input type="checkbox" checked={isInstallment} onChange={(e) => setIsInstallment(e.target.checked)} className={`w-4 h-4 sm:w-5 sm:h-5 rounded-md focus:ring-indigo-500 border-slate-300 ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759] text-indigo-500' : 'text-indigo-600'}`} />
+                        <span className={`text-xs sm:text-sm font-black ${isDarkMode ? 'text-purple-200' : 'text-slate-800'}`}>{type === 'expense' ? 'Parcelar compra?' : 'Receber parcelado?'}</span>
                       </label>
                       {isInstallment && (
-                        <div className={`mt-4 pt-4 border-t animate-in fade-in ${isDarkMode ? 'border-slate-700' : 'border-slate-200/50'}`}>
+                        <div className={`mt-4 pt-4 border-t animate-in fade-in ${isDarkMode ? 'border-[#321759]' : 'border-slate-200/50'}`}>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                              <label className={`block text-[9px] sm:text-[10px] font-black uppercase tracking-widest mb-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Nº de Parcelas</label>
-                              <input type="number" min="2" max="72" value={installmentsCount} onChange={(e) => setInstallmentsCount(e.target.value === '' ? '' : parseInt(e.target.value))} onBlur={() => { if (!installmentsCount || installmentsCount < 2) setInstallmentsCount(2); }} className={`w-full px-4 sm:px-5 py-3 sm:py-4 rounded-xl outline-none focus:ring-4 transition-all font-bold shadow-sm border ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white focus:border-indigo-500 focus:ring-indigo-500/10' : 'bg-white border-slate-300 text-slate-900 focus:border-indigo-500 focus:ring-indigo-500/10'}`} />
+                              <label className={`block text-[9px] sm:text-[10px] font-black uppercase tracking-widest mb-2 ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>Nº de Parcelas</label>
+                              <input type="number" min="2" max="72" value={installmentsCount} onChange={(e) => setInstallmentsCount(e.target.value === '' ? '' : parseInt(e.target.value))} onBlur={() => { if (!installmentsCount || installmentsCount < 2) setInstallmentsCount(2); }} className={`w-full px-4 sm:px-5 py-3 sm:py-4 rounded-xl outline-none focus:ring-4 transition-all font-bold shadow-sm border ${isDarkMode ? 'bg-[#0b0410] border-[#321759] text-white focus:border-indigo-500 focus:ring-indigo-500/10' : 'bg-white border-slate-300 text-slate-900 focus:border-indigo-500 focus:ring-indigo-500/10'}`} />
                             </div>
                             <div>
-                              <label className={`block text-[9px] sm:text-[10px] font-black uppercase tracking-widest mb-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>O valor inserido é o</label>
-                              <div className={`flex p-1.5 rounded-xl shadow-inner border h-[46px] sm:h-[54px] ${isDarkMode ? 'bg-slate-900 border-slate-700' : 'bg-slate-100 border-slate-200'}`}>
-                                <button type="button" onClick={() => setInstallmentType('parcela')} className={`flex-1 text-[9px] sm:text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${installmentType === 'parcela' ? (isDarkMode ? 'bg-slate-700 text-white shadow-md border border-slate-600' : 'bg-white text-indigo-600 shadow-sm border border-slate-200') : (isDarkMode ? 'text-slate-500 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')}`}>Da Parcela</button>
-                                <button type="button" onClick={() => setInstallmentType('total')} className={`flex-1 text-[9px] sm:text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${installmentType === 'total' ? (isDarkMode ? 'bg-slate-700 text-white shadow-md border border-slate-600' : 'bg-white text-indigo-600 shadow-sm border border-slate-200') : (isDarkMode ? 'text-slate-500 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')}`}>Total</button>
+                              <label className={`block text-[9px] sm:text-[10px] font-black uppercase tracking-widest mb-2 ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>O valor inserido é o</label>
+                              <div className={`flex p-1.5 rounded-xl shadow-inner border h-[46px] sm:h-[54px] ${isDarkMode ? 'bg-[#0b0410] border-[#321759]' : 'bg-slate-100 border-slate-200'}`}>
+                                <button type="button" onClick={() => setInstallmentType('parcela')} className={`flex-1 text-[9px] sm:text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${installmentType === 'parcela' ? (isDarkMode ? 'bg-[#2d144d] text-white shadow-md border border-[#441f74]' : 'bg-white text-indigo-600 shadow-sm border border-slate-200') : (isDarkMode ? 'text-purple-300/70 hover:text-purple-200' : 'text-slate-500 hover:text-slate-700')}`}>Da Parcela</button>
+                                <button type="button" onClick={() => setInstallmentType('total')} className={`flex-1 text-[9px] sm:text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${installmentType === 'total' ? (isDarkMode ? 'bg-[#2d144d] text-white shadow-md border border-[#441f74]' : 'bg-white text-indigo-600 shadow-sm border border-slate-200') : (isDarkMode ? 'text-purple-300/70 hover:text-purple-200' : 'text-slate-500 hover:text-slate-700')}`}>Total</button>
                               </div>
                             </div>
                           </div>
-                          <p className={`mt-4 text-[10px] sm:text-xs font-bold px-1 ${isDarkMode ? 'text-indigo-300' : 'text-indigo-700'}`}>
+                          <p className={`mt-4 text-[10px] sm:text-xs font-bold px-1 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-700'}`}>
                             {installmentType === 'total' 
                               ? `💡 Serão geradas ${installmentsCount || 2} parcelas de ${formatCurrency((parseFloat(amount.toString().replace(',', '.')) || 0) / (installmentsCount || 2))}`
                               : `💡 O total final será de ${formatCurrency((parseFloat(amount.toString().replace(',', '.')) || 0) * (installmentsCount || 2))}`}
@@ -2027,9 +2038,9 @@ export default function App() {
 
         {/* MODAL CARTÕES */}
         {showCardsModal && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
-            <div className={`rounded-[2rem] shadow-2xl w-full max-w-3xl max-h-[85vh] overflow-hidden flex flex-col animate-in zoom-in-95 border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-              <div className={`p-6 border-b flex justify-between items-center ${isDarkMode ? 'bg-slate-900/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+          <div className="fixed inset-0 bg-[#0b0410]/80 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
+            <div className={`rounded-[2rem] shadow-2xl w-full max-w-3xl max-h-[85vh] overflow-hidden flex flex-col animate-in zoom-in-95 border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759]' : 'bg-white border-slate-200'}`}>
+              <div className={`p-6 border-b flex justify-between items-center ${isDarkMode ? 'bg-[#0b0410]/50 border-[#321759]' : 'bg-slate-50 border-slate-200'}`}>
                 <h3 className={`font-black flex items-center gap-3 text-xl tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                   <div className={`p-2.5 rounded-xl ${isDarkMode ? 'bg-indigo-900/40' : 'bg-indigo-100'}`}><CreditCard className={`w-6 h-6 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} /></div> Meus Cartões
                 </h3>
@@ -2039,43 +2050,43 @@ export default function App() {
                       <Plus className="w-4 h-4" /> Novo
                     </button>
                   )}
-                  <button onClick={() => { setShowCardsModal(false); setShowCardForm(false); }} className={`p-2 rounded-xl transition-colors border ${isDarkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-400 border-slate-600' : 'bg-white hover:bg-slate-100 text-slate-600 border-slate-200'}`}><X className="w-5 h-5" /></button>
+                  <button onClick={() => { setShowCardsModal(false); setShowCardForm(false); }} className={`p-2 rounded-xl transition-colors border ${isDarkMode ? 'bg-[#1a0b2e] hover:bg-[#2d144d] text-purple-300/70 border-[#321759]' : 'bg-white hover:bg-slate-100 text-slate-600 border-slate-200'}`}><X className="w-5 h-5" /></button>
                 </div>
               </div>
               
               <div className="p-6 md:p-8 overflow-y-auto flex-1">
                 {showCardForm ? (
-                  <div className={`rounded-3xl p-6 sm:p-8 shadow-sm animate-in fade-in slide-in-from-bottom-4 border ${isDarkMode ? 'bg-slate-900/50 border-slate-700' : 'bg-slate-50 border-slate-200/50'}`}>
+                  <div className={`rounded-3xl p-6 sm:p-8 shadow-sm animate-in fade-in slide-in-from-bottom-4 border ${isDarkMode ? 'bg-[#0b0410]/50 border-[#321759]' : 'bg-slate-50 border-slate-200/50'}`}>
                     <h4 className={`font-black mb-6 flex items-center gap-3 text-lg sm:text-xl tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
                       <div className={`p-2 rounded-xl ${isDarkMode ? 'bg-indigo-900/30' : 'bg-indigo-50'}`}><Settings2 className={`w-5 h-5 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} /></div>
                       {editingCardId ? 'Editar Cartão' : 'Configurar Novo Cartão'}
                     </h4>
                     <form onSubmit={handleSaveCard} className="space-y-5 sm:space-y-6">
                       <div>
-                        <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Nome do Banco / Cartão</label>
-                        <input type="text" required value={cardForm.name} onChange={e => setCardForm({...cardForm, name: e.target.value})} placeholder="Ex: Nubank, C6 Bank..." className={`w-full px-4 sm:px-5 py-3 sm:py-4 rounded-2xl outline-none focus:ring-4 transition-all font-bold border ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white focus:border-indigo-500 focus:ring-indigo-500/10' : 'bg-white border-slate-300 text-slate-900 focus:border-indigo-500 focus:ring-indigo-500/10 shadow-sm'}`} />
+                        <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>Nome do Banco / Cartão</label>
+                        <input type="text" required value={cardForm.name} onChange={e => setCardForm({...cardForm, name: e.target.value})} placeholder="Ex: Nubank, C6 Bank..." className={`w-full px-4 sm:px-5 py-3 sm:py-4 rounded-2xl outline-none focus:ring-4 transition-all font-bold border ${isDarkMode ? 'bg-[#0b0410] border-[#321759] text-white focus:border-indigo-500 focus:ring-indigo-500/10' : 'bg-white border-slate-300 text-slate-900 focus:border-indigo-500 focus:ring-indigo-500/10 shadow-sm'}`} />
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
                         <div>
-                          <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Limite (R$)</label>
-                          <input type="number" step="0.01" required value={cardForm.limit} onChange={e => setCardForm({...cardForm, limit: e.target.value})} placeholder="Ex: 1500" className={`w-full px-4 sm:px-5 py-3 sm:py-4 rounded-2xl outline-none focus:ring-4 transition-all font-bold border ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white focus:border-indigo-500 focus:ring-indigo-500/10' : 'bg-white border-slate-300 text-slate-900 focus:border-indigo-500 focus:ring-indigo-500/10 shadow-sm'}`} />
+                          <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>Limite (R$)</label>
+                          <input type="number" step="0.01" required value={cardForm.limit} onChange={e => setCardForm({...cardForm, limit: e.target.value})} placeholder="Ex: 1500" className={`w-full px-4 sm:px-5 py-3 sm:py-4 rounded-2xl outline-none focus:ring-4 transition-all font-bold border ${isDarkMode ? 'bg-[#0b0410] border-[#321759] text-white focus:border-indigo-500 focus:ring-indigo-500/10' : 'bg-white border-slate-300 text-slate-900 focus:border-indigo-500 focus:ring-indigo-500/10 shadow-sm'}`} />
                         </div>
                         <div>
-                          <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Dia Vencimento</label>
-                          <input type="number" min="1" max="31" required value={cardForm.dueDay} onChange={e => setCardForm({...cardForm, dueDay: e.target.value})} placeholder="Ex: 5" className={`w-full px-4 sm:px-5 py-3 sm:py-4 rounded-2xl outline-none focus:ring-4 transition-all font-bold border ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white focus:border-indigo-500 focus:ring-indigo-500/10' : 'bg-white border-slate-300 text-slate-900 focus:border-indigo-500 focus:ring-indigo-500/10 shadow-sm'}`} />
+                          <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>Dia Vencimento</label>
+                          <input type="number" min="1" max="31" required value={cardForm.dueDay} onChange={e => setCardForm({...cardForm, dueDay: e.target.value})} placeholder="Ex: 5" className={`w-full px-4 sm:px-5 py-3 sm:py-4 rounded-2xl outline-none focus:ring-4 transition-all font-bold border ${isDarkMode ? 'bg-[#0b0410] border-[#321759] text-white focus:border-indigo-500 focus:ring-indigo-500/10' : 'bg-white border-slate-300 text-slate-900 focus:border-indigo-500 focus:ring-indigo-500/10 shadow-sm'}`} />
                         </div>
                       </div>
                       <div>
-                        <label className={`block text-[10px] font-black uppercase tracking-widest mb-3 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Cor de Identificação</label>
-                        <div className={`flex flex-wrap gap-2 sm:gap-3 p-4 sm:p-5 rounded-2xl border shadow-sm justify-center sm:justify-start ${isDarkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'}`}>
+                        <label className={`block text-[10px] font-black uppercase tracking-widest mb-3 ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>Cor de Identificação</label>
+                        <div className={`flex flex-wrap gap-2 sm:gap-3 p-4 sm:p-5 rounded-2xl border shadow-sm justify-center sm:justify-start ${isDarkMode ? 'bg-[#0b0410] border-[#321759]' : 'bg-white border-slate-200'}`}>
                           {colorOptions.map(color => (
-                            <button key={color} type="button" onClick={() => setCardForm({...cardForm, color})} className={`w-10 h-10 sm:w-12 sm:h-12 rounded-2xl ${color} ${cardForm.color === color ? `ring-4 ring-indigo-400 ring-offset-2 sm:ring-offset-4 scale-110 shadow-lg ${isDarkMode ? 'ring-offset-slate-900' : 'ring-offset-white'}` : 'hover:scale-110 shadow-sm'} transition-all`}></button>
+                            <button key={color} type="button" onClick={() => setCardForm({...cardForm, color})} className={`w-10 h-10 sm:w-12 sm:h-12 rounded-2xl ${color} ${cardForm.color === color ? `ring-4 ring-indigo-400 ring-offset-2 sm:ring-offset-4 scale-110 shadow-lg ${isDarkMode ? 'ring-offset-[#0b0410]' : 'ring-offset-white'}` : 'hover:scale-110 shadow-sm'} transition-all`}></button>
                           ))}
                         </div>
                       </div>
                       <div className="flex flex-col sm:flex-row gap-3 pt-4">
                         <button type="submit" className={`w-full sm:flex-1 py-4 text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl transition-all active:scale-95 ${isDarkMode ? 'bg-indigo-600 hover:bg-indigo-500' : 'bg-slate-900 hover:bg-black'}`}>Salvar Cartão</button>
-                        <button type="button" onClick={() => setShowCardForm(false)} className={`w-full sm:w-auto px-8 py-4 font-black uppercase tracking-widest text-xs rounded-2xl shadow-sm transition-all active:scale-95 border ${isDarkMode ? 'bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-700' : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'}`}>Cancelar</button>
+                        <button type="button" onClick={() => setShowCardForm(false)} className={`w-full sm:w-auto px-8 py-4 font-black uppercase tracking-widest text-xs rounded-2xl shadow-sm transition-all active:scale-95 border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759] text-purple-300/70 hover:bg-[#2d144d]' : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'}`}>Cancelar</button>
                       </div>
                     </form>
                   </div>
@@ -2087,36 +2098,36 @@ export default function App() {
                       const usagePercentage = card.limit > 0 ? Math.min((cardExpenses / card.limit) * 100, 100) : 100;
 
                       return (
-                        <div key={card.id} className={`p-6 rounded-3xl shadow-sm relative overflow-hidden group transition-colors flex flex-col border ${isDarkMode ? 'bg-slate-900 border-slate-700 hover:border-indigo-500' : 'bg-slate-50 border-slate-200 hover:border-indigo-300'}`}>
+                        <div key={card.id} className={`p-6 rounded-3xl shadow-sm relative overflow-hidden group transition-colors flex flex-col border ${isDarkMode ? 'bg-[#0b0410] border-[#321759] hover:border-indigo-500' : 'bg-slate-50 border-slate-200 hover:border-indigo-300'}`}>
                           <div className={`absolute top-0 left-0 w-full h-2.5 ${card.color}`}></div>
                           
                           <div className="flex justify-between items-start mb-6 mt-1">
                             <div className="pr-2">
                               <h4 className={`font-black text-xl truncate tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{card.name}</h4>
-                              <p className={`text-[10px] font-bold flex items-center gap-1.5 mt-2 px-2.5 py-1 rounded-md inline-flex uppercase tracking-widest border ${isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-400' : 'bg-white border-slate-200 text-slate-500'}`}><Calendar className="w-3.5 h-3.5" /> Vence dia {card.dueDay}</p>
+                              <p className={`text-[10px] font-bold flex items-center gap-1.5 mt-2 px-2.5 py-1 rounded-md inline-flex uppercase tracking-widest border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759] text-purple-300/70' : 'bg-white border-slate-200 text-slate-500'}`}><Calendar className="w-3.5 h-3.5" /> Vence dia {card.dueDay}</p>
                             </div>
                             <div className="flex items-center gap-1.5 pl-2">
-                              <button onClick={() => openEditCardForm(card)} className={`p-2.5 rounded-xl transition-colors shadow-sm active:scale-95 border ${isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-400 hover:text-amber-400' : 'bg-white border-slate-200 text-slate-500 hover:text-amber-600'}`}><Edit className="w-4 h-4" /></button>
-                              <button onClick={() => handleDeleteCard(card.id)} className={`p-2.5 rounded-xl transition-colors shadow-sm active:scale-95 border ${isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-400 hover:text-rose-400' : 'bg-white border-slate-200 text-slate-500 hover:text-rose-600'}`}><Trash2 className="w-4 h-4" /></button>
+                              <button onClick={() => openEditCardForm(card)} className={`p-2.5 rounded-xl transition-colors shadow-sm active:scale-95 border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759] text-purple-300/70 hover:text-amber-400' : 'bg-white border-slate-200 text-slate-500 hover:text-amber-600'}`}><Edit className="w-4 h-4" /></button>
+                              <button onClick={() => handleDeleteCard(card.id)} className={`p-2.5 rounded-xl transition-colors shadow-sm active:scale-95 border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759] text-purple-300/70 hover:text-rose-400' : 'bg-white border-slate-200 text-slate-500 hover:text-rose-600'}`}><Trash2 className="w-4 h-4" /></button>
                             </div>
                           </div>
 
                           <div className="space-y-5 mt-auto">
-                            <div className={`flex justify-between text-sm font-bold p-4 rounded-2xl border shadow-sm ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-                              <span className={`uppercase tracking-widest text-[10px] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Limite Total</span>
+                            <div className={`flex justify-between text-sm font-bold p-4 rounded-2xl border shadow-sm ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759]' : 'bg-white border-slate-200'}`}>
+                              <span className={`uppercase tracking-widest text-[10px] ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>Limite Total</span>
                               <span className={`font-black break-words ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{formatCurrency(card.limit)}</span>
                             </div>
                             <div>
                               <div className="flex justify-between text-sm mb-2 font-bold px-1">
-                                <span className={`text-[10px] uppercase tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Fatura: <span className={`ml-1 break-words ${isDarkMode ? 'text-rose-400' : 'text-rose-600'}`}>{formatCurrency(cardExpenses)}</span></span>
-                                <span className={`text-[10px] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>{usagePercentage.toFixed(0)}%</span>
+                                <span className={`text-[10px] uppercase tracking-widest ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>Fatura: <span className={`ml-1 break-words ${isDarkMode ? 'text-rose-400' : 'text-rose-600'}`}>{formatCurrency(cardExpenses)}</span></span>
+                                <span className={`text-[10px] ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>{usagePercentage.toFixed(0)}%</span>
                               </div>
-                              <div className={`w-full h-3 rounded-full overflow-hidden shadow-inner ${isDarkMode ? 'bg-slate-800' : 'bg-slate-200'}`}>
+                              <div className={`w-full h-3 rounded-full overflow-hidden shadow-inner border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759]' : 'bg-slate-200 border-slate-200/50'}`}>
                                 <div className={`h-full rounded-full transition-all duration-1000 ${usagePercentage > 90 ? 'bg-rose-500' : usagePercentage > 60 ? 'bg-amber-400' : card.color}`} style={{ width: `${usagePercentage}%` }}></div>
                               </div>
                             </div>
-                            <div className={`pt-4 border-t flex justify-between items-end px-1 ${isDarkMode ? 'border-slate-800' : 'border-slate-200/50'}`}>
-                              <span className={`text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Disponível</span>
+                            <div className={`pt-4 border-t flex justify-between items-end px-1 ${isDarkMode ? 'border-[#321759]' : 'border-slate-200/50'}`}>
+                              <span className={`text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>Disponível</span>
                               <span className={`font-black text-2xl tracking-tight break-words ${availableLimit < 100 ? (isDarkMode ? 'text-rose-400' : 'text-rose-600') : (isDarkMode ? 'text-emerald-400' : 'text-emerald-600')}`}>{formatCurrency(availableLimit)}</span>
                             </div>
                           </div>
@@ -2132,25 +2143,25 @@ export default function App() {
 
         {/* MODAL CONFIGURAÇÕES E APAGAR CONTA */}
         {showSettingsModal && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
-            <div className={`rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden flex flex-col animate-in zoom-in-95 border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-              <div className={`p-6 border-b flex justify-between items-center ${isDarkMode ? 'bg-slate-900/50 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}>
+          <div className="fixed inset-0 bg-[#0b0410]/80 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
+            <div className={`rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden flex flex-col animate-in zoom-in-95 border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759]' : 'bg-white border-slate-200'}`}>
+              <div className={`p-6 border-b flex justify-between items-center ${isDarkMode ? 'bg-[#0b0410]/50 border-[#321759] text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}>
                 <h3 className="font-black flex items-center gap-3 text-xl tracking-tight">
                   <div className={`p-2.5 rounded-xl ${isDarkMode ? 'bg-indigo-900/40' : 'bg-indigo-100'}`}><Settings className={`w-6 h-6 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} /></div> Configurações
                 </h3>
-                <button onClick={() => setShowSettingsModal(false)} className={`p-2 rounded-xl transition-colors border ${isDarkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-400 border-slate-600' : 'bg-white hover:bg-slate-100 text-slate-600 border-slate-200'}`}><X className="w-5 h-5" /></button>
+                <button onClick={() => setShowSettingsModal(false)} className={`p-2 rounded-xl transition-colors border ${isDarkMode ? 'bg-[#1a0b2e] hover:bg-[#2d144d] text-purple-300/70 border-[#321759]' : 'bg-white hover:bg-slate-100 text-slate-600 border-slate-200'}`}><X className="w-5 h-5" /></button>
               </div>
               
               <div className="p-8 space-y-6 flex-1 overflow-y-auto">
                 <div>
-                  <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Nome de Exibição</label>
-                  <input type="text" value={userSettings.displayName} onChange={e => setUserSettings({...userSettings, displayName: e.target.value})} className={`w-full px-5 py-4 rounded-2xl outline-none focus:ring-4 transition-all font-bold shadow-sm border ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white focus:border-indigo-500 focus:ring-indigo-500/10' : 'bg-white border-slate-300 text-slate-900 focus:border-indigo-500 focus:ring-indigo-500/10'}`} placeholder="Seu nome..." />
+                  <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>Nome de Exibição</label>
+                  <input type="text" value={userSettings.displayName} onChange={e => setUserSettings({...userSettings, displayName: e.target.value})} className={`w-full px-5 py-4 rounded-2xl outline-none focus:ring-4 transition-all font-bold shadow-sm border ${isDarkMode ? 'bg-[#0b0410] border-[#321759] text-white focus:border-indigo-500 focus:ring-indigo-500/10' : 'bg-white border-slate-300 text-slate-900 focus:border-indigo-500 focus:ring-indigo-500/10'}`} placeholder="Seu nome..." />
                 </div>
                 
                 <div className={`p-5 shadow-sm rounded-2xl relative overflow-hidden border ${isDarkMode ? 'bg-indigo-900/20 border-indigo-800/50' : 'bg-indigo-50 border-indigo-200/50'}`}>
                   <label className={`block text-[10px] font-black uppercase tracking-widest mb-3 flex items-center gap-1.5 mt-1 ${isDarkMode ? 'text-indigo-300' : 'text-indigo-700'}`}><Sparkles className="w-4 h-4"/> IA Gemini API Key</label>
-                  <p className={`text-xs font-medium mb-4 leading-relaxed ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Para a funcionalidade de IA funcionar em alojamentos próprios, tem de inserir aqui a sua chave privada do <strong>Google AI Studio</strong>.</p>
-                  <input type="password" value={userSettings.geminiApiKey} onChange={e => setUserSettings({...userSettings, geminiApiKey: e.target.value})} placeholder="Colar a API Key aqui..." className={`w-full px-4 py-3.5 rounded-xl outline-none focus:ring-4 font-mono text-xs shadow-sm border ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white focus:border-indigo-500 focus:ring-indigo-500/10' : 'bg-white border-slate-300 text-slate-900 focus:border-indigo-500 focus:ring-indigo-500/10'}`} />
+                  <p className={`text-xs font-medium mb-4 leading-relaxed ${isDarkMode ? 'text-purple-300/70' : 'text-slate-600'}`}>Para a funcionalidade de IA funcionar em alojamentos próprios, tem de inserir aqui a sua chave privada do <strong>Google AI Studio</strong>.</p>
+                  <input type="password" value={userSettings.geminiApiKey} onChange={e => setUserSettings({...userSettings, geminiApiKey: e.target.value})} placeholder="Colar a API Key aqui..." className={`w-full px-4 py-3.5 rounded-xl outline-none focus:ring-4 font-mono text-xs shadow-sm border ${isDarkMode ? 'bg-[#0b0410] border-[#321759] text-white focus:border-indigo-500 focus:ring-indigo-500/10' : 'bg-white border-slate-300 text-slate-900 focus:border-indigo-500 focus:ring-indigo-500/10'}`} />
                 </div>
 
                 <button onClick={handleSaveSettings} className={`w-full py-4 text-white font-black text-sm uppercase tracking-widest rounded-2xl shadow-xl transition-all active:scale-95 mt-4 ${isDarkMode ? 'bg-indigo-600 hover:bg-indigo-500' : 'bg-slate-900 hover:bg-black'}`}>Guardar Alterações</button>
@@ -2169,24 +2180,24 @@ export default function App() {
 
         {/* MODAL SINCRONIZAR */}
         {showSyncModal && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
-            <div className={`rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-               <div className={`p-6 border-b flex justify-between items-center ${isDarkMode ? 'bg-slate-900/50 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}>
+          <div className="fixed inset-0 bg-[#0b0410]/80 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
+            <div className={`rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759]' : 'bg-white border-slate-200'}`}>
+               <div className={`p-6 border-b flex justify-between items-center ${isDarkMode ? 'bg-[#0b0410]/50 border-[#321759] text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}>
                 <h3 className="font-black flex items-center gap-3 text-xl tracking-tight">
                   <div className={`p-2.5 rounded-xl ${isDarkMode ? 'bg-indigo-900/40' : 'bg-indigo-100'}`}><RefreshCw className={`w-6 h-6 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} /></div> Sincronizar
                 </h3>
-                <button onClick={() => setShowSyncModal(false)} className={`p-2 rounded-xl transition-colors border ${isDarkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-400 border-slate-600' : 'bg-white hover:bg-slate-100 text-slate-600 border-slate-200'}`}><X className="w-5 h-5" /></button>
+                <button onClick={() => setShowSyncModal(false)} className={`p-2 rounded-xl transition-colors border ${isDarkMode ? 'bg-[#1a0b2e] hover:bg-[#2d144d] text-purple-300/70 border-[#321759]' : 'bg-white hover:bg-slate-100 text-slate-600 border-slate-200'}`}><X className="w-5 h-5" /></button>
               </div>
               <div className="p-8">
-                <div className={`flex gap-1.5 mb-6 p-1.5 rounded-2xl shadow-inner border ${isDarkMode ? 'bg-slate-900/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
-                  <button onClick={() => setSyncTab('export')} className={`flex-1 py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${syncTab === 'export' ? (isDarkMode ? 'bg-slate-800 shadow-md text-indigo-400 border border-slate-600' : 'bg-white shadow-md text-indigo-700') : (isDarkMode ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')}`}>Exportar</button>
-                  <button onClick={() => setSyncTab('import')} className={`flex-1 py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${syncTab === 'import' ? (isDarkMode ? 'bg-slate-800 shadow-md text-indigo-400 border border-slate-600' : 'bg-white shadow-md text-indigo-700') : (isDarkMode ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')}`}>Importar</button>
+                <div className={`flex gap-1.5 mb-6 p-1.5 rounded-2xl shadow-inner border ${isDarkMode ? 'bg-[#0b0410]/50 border-[#321759]' : 'bg-slate-50 border-slate-200'}`}>
+                  <button onClick={() => setSyncTab('export')} className={`flex-1 py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${syncTab === 'export' ? (isDarkMode ? 'bg-[#1a0b2e] shadow-md text-indigo-400 border border-[#321759]' : 'bg-white shadow-md text-indigo-700') : (isDarkMode ? 'text-purple-300/70 hover:text-purple-200' : 'text-slate-500 hover:text-slate-700')}`}>Exportar</button>
+                  <button onClick={() => setSyncTab('import')} className={`flex-1 py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${syncTab === 'import' ? (isDarkMode ? 'bg-[#1a0b2e] shadow-md text-indigo-400 border border-[#321759]' : 'bg-white shadow-md text-indigo-700') : (isDarkMode ? 'text-purple-300/70 hover:text-purple-200' : 'text-slate-500 hover:text-slate-700')}`}>Importar</button>
                 </div>
                 {syncTab === 'export' ? (
                   <div className="space-y-4">
-                    <p className={`text-xs font-bold text-center px-4 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Copie o código de segurança para transferir os seus dados.</p>
+                    <p className={`text-xs font-bold text-center px-4 ${isDarkMode ? 'text-purple-300/70' : 'text-slate-600'}`}>Copie o código de segurança para transferir os seus dados.</p>
                     <div className="relative group">
-                      <textarea readOnly value={JSON.stringify({ version: 2, transactions, categories, cards })} className={`w-full h-40 p-5 font-mono text-[10px] rounded-2xl resize-none outline-none shadow-inner border ${isDarkMode ? 'bg-slate-900 border-slate-700 text-slate-300' : 'bg-white border-slate-200 text-slate-500'}`} />
+                      <textarea readOnly value={JSON.stringify({ version: 2, transactions, categories, cards })} className={`w-full h-40 p-5 font-mono text-[10px] rounded-2xl resize-none outline-none shadow-inner border ${isDarkMode ? 'bg-[#0b0410] border-[#321759] text-purple-200' : 'bg-white border-slate-200 text-slate-500'}`} />
                       <button onClick={handleCopySync} className={`absolute bottom-4 right-4 flex items-center gap-2 text-white px-5 py-3 rounded-xl text-xs font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all ${isDarkMode ? 'bg-indigo-600 hover:bg-indigo-500' : 'bg-slate-900 hover:bg-black'}`}>
                         {copied ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />} {copied ? 'Copiado!' : 'Copiar'}
                       </button>
@@ -2194,8 +2205,8 @@ export default function App() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <p className={`text-xs font-bold text-center px-4 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Cole o código do outro aparelho para substituir os dados atuais.</p>
-                    <textarea value={importText} onChange={(e) => setImportText(e.target.value)} placeholder="Colar código aqui..." className={`w-full h-40 p-5 font-mono text-[10px] rounded-2xl resize-none outline-none shadow-inner focus:ring-4 transition-all border ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white focus:border-indigo-500 focus:ring-indigo-500/10' : 'bg-white border-slate-200 text-slate-900 focus:border-indigo-500 focus:ring-indigo-500/10'}`} />
+                    <p className={`text-xs font-bold text-center px-4 ${isDarkMode ? 'text-purple-300/70' : 'text-slate-600'}`}>Cole o código do outro aparelho para substituir os dados atuais.</p>
+                    <textarea value={importText} onChange={(e) => setImportText(e.target.value)} placeholder="Colar código aqui..." className={`w-full h-40 p-5 font-mono text-[10px] rounded-2xl resize-none outline-none shadow-inner focus:ring-4 transition-all border ${isDarkMode ? 'bg-[#0b0410] border-[#321759] text-white focus:border-indigo-500 focus:ring-indigo-500/10' : 'bg-white border-slate-300 text-slate-900 focus:border-indigo-500 focus:ring-indigo-500/10'}`} />
                     <button onClick={handleImportSync} className={`w-full py-4 text-white font-black uppercase tracking-widest text-xs rounded-2xl flex items-center justify-center gap-2 shadow-xl active:scale-95 transition-all ${isDarkMode ? 'bg-indigo-600 hover:bg-indigo-500' : 'bg-indigo-600 hover:bg-indigo-700'}`}><Download className="w-5 h-5" /> Importar Dados</button>
                   </div>
                 )}
@@ -2206,26 +2217,26 @@ export default function App() {
 
         {/* MODAL GRÁFICOS */}
         {showChartModal && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
-            <div className={`rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden flex flex-col animate-in zoom-in-95 border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-               <div className={`p-6 border-b flex justify-between items-center ${isDarkMode ? 'bg-slate-900/50 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}>
+          <div className="fixed inset-0 bg-[#0b0410]/80 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
+            <div className={`rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden flex flex-col animate-in zoom-in-95 border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759]' : 'bg-white border-slate-200'}`}>
+               <div className={`p-6 border-b flex justify-between items-center ${isDarkMode ? 'bg-[#0b0410]/50 border-[#321759] text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}>
                  <h3 className="font-black tracking-tight flex items-center gap-3 text-xl">
                    <div className={`p-2.5 rounded-xl ${isDarkMode ? 'bg-indigo-900/40' : 'bg-indigo-100'}`}><PieChart className={`w-6 h-6 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} /></div> Análise Categórica
                  </h3>
-                 <button onClick={() => setShowChartModal(false)} className={`p-2 rounded-xl transition-colors border ${isDarkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-400 border-slate-600' : 'bg-white hover:bg-slate-100 text-slate-600 border-slate-200'}`}><X className="w-5 h-5" /></button>
+                 <button onClick={() => setShowChartModal(false)} className={`p-2 rounded-xl transition-colors border ${isDarkMode ? 'bg-[#1a0b2e] hover:bg-[#2d144d] text-purple-300/70 border-[#321759]' : 'bg-white hover:bg-slate-100 text-slate-600 border-slate-200'}`}><X className="w-5 h-5" /></button>
                </div>
               <div className="p-8 flex flex-col items-center">
                 <div 
-                  className={`w-64 h-64 rounded-full shadow-inner mb-10 border-[8px] overflow-hidden ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-slate-100 border-slate-50'}`}
+                  className={`w-64 h-64 rounded-full shadow-inner mb-10 border-[8px] overflow-hidden ${isDarkMode ? 'bg-[#0b0410] border-[#1a0b2e]' : 'bg-slate-100 border-slate-50'}`}
                   dangerouslySetInnerHTML={{ __html: pieSvgString }}
                 ></div>
                 <div className="w-full grid grid-cols-2 gap-4">
                   {chartData.map((d, i) => (
-                    <div key={i} className={`flex items-center gap-3 p-3.5 rounded-2xl shadow-sm border ${isDarkMode ? 'bg-slate-900/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+                    <div key={i} className={`flex items-center gap-3 p-3.5 rounded-2xl shadow-sm border ${isDarkMode ? 'bg-[#0b0410]/50 border-[#321759]' : 'bg-slate-50 border-slate-200'}`}>
                       <div className="w-4 h-4 rounded-full shrink-0" style={{ backgroundColor: d.color }}></div>
                       <div className="flex flex-col">
                         <span className={`text-xs font-black truncate ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>{d.category}</span>
-                        <span className={`text-[10px] font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>{d.percentage.toFixed(0)}%</span>
+                        <span className={`text-[10px] font-bold ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>{d.percentage.toFixed(0)}%</span>
                       </div>
                     </div>
                   ))}
@@ -2237,25 +2248,25 @@ export default function App() {
 
         {/* MODAIS IA (PLANO META, ORÇAMENTO, IA GERAL, COMPRAS) */}
         {isPlanningGoal && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
-            <div className={`rounded-[2rem] w-full max-w-md max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+          <div className="fixed inset-0 bg-[#0b0410]/80 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
+            <div className={`rounded-[2rem] w-full max-w-md max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759]' : 'bg-white border-slate-200'}`}>
               <div className={`p-6 border-b flex justify-between items-center ${isDarkMode ? 'bg-indigo-900/30 border-indigo-800/50 text-indigo-100' : 'bg-indigo-50 border-indigo-200/50 text-indigo-900'}`}>
                 <h3 className="font-black tracking-tight flex items-center gap-3 text-xl">
                   <div className="p-2.5 bg-indigo-600 rounded-xl shadow-lg shadow-indigo-500/30"><Sparkles className="w-6 h-6 text-white"/></div> 
                   Plano Estratégico
                 </h3>
-                <button onClick={() => setIsPlanningGoal(false)} className={`p-2 rounded-xl transition-colors border ${isDarkMode ? 'bg-slate-800 hover:bg-slate-700 text-indigo-400 border-indigo-800/50' : 'bg-white hover:bg-slate-100 text-indigo-700 border-indigo-200'}`}><X className="w-5 h-5"/></button>
+                <button onClick={() => setIsPlanningGoal(false)} className={`p-2 rounded-xl transition-colors border ${isDarkMode ? 'bg-[#1a0b2e] hover:bg-[#2d144d] text-indigo-400 border-indigo-800/50' : 'bg-white hover:bg-slate-100 text-indigo-700 border-indigo-200'}`}><X className="w-5 h-5"/></button>
               </div>
               <div className="p-8 overflow-y-auto flex-1">
                 {!aiGoalPlan ? (
                   <div className="text-center py-16 flex flex-col items-center">
                     <Loader2 className={`w-12 h-12 animate-spin mb-6 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}/>
                     <span className={`font-black tracking-tight text-lg ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>A calcular melhor estratégia...</span>
-                    <p className={`text-[10px] font-bold mt-1 uppercase ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Para a meta "{selectedGoalForPlan?.name}"</p>
+                    <p className={`text-[10px] font-bold mt-1 uppercase ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>Para a meta "{selectedGoalForPlan?.name}"</p>
                   </div>
                 ) : (
-                  <div className={`text-sm font-bold leading-relaxed space-y-4 ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                    {aiGoalPlan.split('\n').map((l, i) => l.trim() && <p key={i} className={`p-5 rounded-2xl shadow-sm border ${isDarkMode ? 'bg-slate-900/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>{l}</p>)}
+                  <div className={`text-sm font-bold leading-relaxed space-y-4 ${isDarkMode ? 'text-purple-200' : 'text-slate-700'}`}>
+                    {aiGoalPlan.split('\n').map((l, i) => l.trim() && <p key={i} className={`p-5 rounded-2xl shadow-sm border ${isDarkMode ? 'bg-[#0b0410]/50 border-[#321759]' : 'bg-slate-50 border-slate-200'}`}>{l}</p>)}
                   </div>
                 )}
               </div>
@@ -2264,25 +2275,25 @@ export default function App() {
         )}
 
         {showAiBudgetModal && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
-            <div className={`rounded-[2rem] w-full max-w-md max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+          <div className="fixed inset-0 bg-[#0b0410]/80 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
+            <div className={`rounded-[2rem] w-full max-w-md max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759]' : 'bg-white border-slate-200'}`}>
               <div className={`p-6 border-b flex justify-between items-center ${isDarkMode ? 'bg-indigo-900/30 border-indigo-800/50 text-indigo-100' : 'bg-indigo-50 border-indigo-200/50 text-indigo-900'}`}>
                 <h3 className="font-black tracking-tight flex items-center gap-3 text-xl">
                   <div className="p-2.5 bg-indigo-600 rounded-xl shadow-lg shadow-indigo-500/30"><Sparkles className="w-6 h-6 text-white"/></div> 
                   Orçamento Inteligente
                 </h3>
-                <button onClick={() => setShowAiBudgetModal(false)} className={`p-2 rounded-xl transition-colors border ${isDarkMode ? 'bg-slate-800 hover:bg-slate-700 text-indigo-400 border-indigo-800/50' : 'bg-white hover:bg-slate-100 text-indigo-700 border-indigo-200'}`}><X className="w-5 h-5"/></button>
+                <button onClick={() => setShowAiBudgetModal(false)} className={`p-2 rounded-xl transition-colors border ${isDarkMode ? 'bg-[#1a0b2e] hover:bg-[#2d144d] text-indigo-400 border-indigo-800/50' : 'bg-white hover:bg-slate-100 text-indigo-700 border-indigo-200'}`}><X className="w-5 h-5"/></button>
               </div>
               <div className="p-8 overflow-y-auto flex-1">
                 {isGeneratingBudget ? (
                   <div className="text-center py-16 flex flex-col items-center">
                     <Loader2 className={`w-12 h-12 animate-spin mb-6 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}/>
                     <span className={`font-black tracking-tight text-lg ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>A desenhar o orçamento ideal...</span>
-                    <p className={`text-[10px] font-bold mt-1 uppercase ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>A analisar o seu rendimento e categorias.</p>
+                    <p className={`text-[10px] font-bold mt-1 uppercase ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>A analisar o seu rendimento e categorias.</p>
                   </div>
                 ) : (
-                  <div className={`text-sm font-bold leading-relaxed space-y-4 ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                    {aiBudgetPlan.split('\n').map((l, i) => l.trim() && <p key={i} className={`p-5 rounded-2xl shadow-sm border ${isDarkMode ? 'bg-slate-900/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>{l}</p>)}
+                  <div className={`text-sm font-bold leading-relaxed space-y-4 ${isDarkMode ? 'text-purple-200' : 'text-slate-700'}`}>
+                    {aiBudgetPlan.split('\n').map((l, i) => l.trim() && <p key={i} className={`p-5 rounded-2xl shadow-sm border ${isDarkMode ? 'bg-[#0b0410]/50 border-[#321759]' : 'bg-slate-50 border-slate-200'}`}>{l}</p>)}
                   </div>
                 )}
               </div>
@@ -2291,22 +2302,20 @@ export default function App() {
         )}
 
         {showAiModal && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
-            <div className={`rounded-[2rem] w-full max-w-md max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-              <div className={`p-6 border-b flex justify-between items-center ${isDarkMode ? 'bg-indigo-900/30 border-indigo-800/50 text-indigo-100' : 'bg-indigo-50 border-indigo-200/50 text-indigo-900'}`}>
-                <h3 className="font-black tracking-tight flex items-center gap-3 text-xl"><div className="p-2.5 bg-indigo-600 rounded-xl shadow-lg shadow-indigo-500/30"><Sparkles className="w-6 h-6 text-white"/></div> Assistente IA</h3>
-                <button onClick={() => setShowAiModal(false)} className={`p-2 rounded-xl transition-colors border ${isDarkMode ? 'bg-slate-800 hover:bg-slate-700 text-indigo-400 border-indigo-800/50' : 'bg-white hover:bg-slate-100 text-indigo-700 border-indigo-200'}`}><X className="w-5 h-5"/></button>
-              </div>
+          <div className="fixed inset-0 bg-[#0b0410]/80 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
+            <div className={`rounded-[2rem] w-full max-w-md max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759]' : 'bg-white border-slate-200'}`}>
+              <div className={`p-6 border-b flex justify-between items-center ${isDarkMode ? 'bg-indigo-900/30 border-indigo-800/50 text-indigo-100' : 'bg-indigo-50 border-indigo-200/50 text-indigo-900'}`}><h3 className="font-black tracking-tight flex items-center gap-3 text-xl"><div className="p-2.5 bg-indigo-600 rounded-xl shadow-lg shadow-indigo-500/30"><Sparkles className="w-6 h-6 text-white"/></div> Assistente IA</h3>
+              <button onClick={() => setShowAiModal(false)} className={`p-2 rounded-xl transition-colors border ${isDarkMode ? 'bg-[#1a0b2e] hover:bg-[#2d144d] text-indigo-400 border-indigo-800/50' : 'bg-white hover:bg-slate-100 text-indigo-700 border-indigo-200'}`}><X className="w-5 h-5"/></button></div>
               <div className="p-8 overflow-y-auto flex-1">
                 {isAnalyzing ? (
                   <div className="text-center py-16 flex flex-col items-center">
                     <Loader2 className={`w-12 h-12 animate-spin mb-6 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}/>
                     <span className={`font-black tracking-tight text-lg ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>A analisar padrões...</span>
-                    <p className={`text-[10px] font-bold mt-1 uppercase ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>A preparar o seu relatório.</p>
+                    <p className={`text-[10px] font-bold mt-1 uppercase ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>A preparar o seu relatório.</p>
                   </div>
                 ) : (
-                  <div className={`text-sm font-bold leading-relaxed space-y-4 ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                    {aiInsight.split('\n').map((l, i) => l.trim() && <p key={i} className={`p-5 rounded-2xl shadow-sm border ${isDarkMode ? 'bg-slate-900/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>{l}</p>)}
+                  <div className={`text-sm font-bold leading-relaxed space-y-4 ${isDarkMode ? 'text-purple-200' : 'text-slate-700'}`}>
+                    {aiInsight.split('\n').map((l, i) => l.trim() && <p key={i} className={`p-5 rounded-2xl shadow-sm border ${isDarkMode ? 'bg-[#0b0410]/50 border-[#321759]' : 'bg-slate-50 border-slate-200'}`}>{l}</p>)}
                   </div>
                 )}
               </div>
@@ -2315,21 +2324,21 @@ export default function App() {
         )}
 
         {showCalculator && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
-            <div className={`rounded-[2rem] shadow-2xl w-full max-w-[320px] overflow-hidden flex flex-col animate-in zoom-in-95 border ${isDarkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'}`}>
-              <div className={`p-5 border-b flex justify-between items-center ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
+          <div className="fixed inset-0 bg-[#0b0410]/80 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
+            <div className={`rounded-[2rem] shadow-2xl w-full max-w-[320px] overflow-hidden flex flex-col animate-in zoom-in-95 border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759]' : 'bg-white border-slate-200'}`}>
+              <div className={`p-5 border-b flex justify-between items-center ${isDarkMode ? 'bg-[#0b0410]/50 border-[#321759]' : 'bg-slate-50 border-slate-200'}`}>
                 <h3 className={`font-black flex items-center gap-2 text-xs tracking-widest uppercase ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                   <CalculatorIcon className={`w-4 h-4 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} /> Calculadora
                 </h3>
-                <button onClick={() => setShowCalculator(false)} className={`p-2 rounded-xl transition-colors ${isDarkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-400' : 'bg-white hover:bg-slate-100 text-slate-600 border border-slate-200'}`}><X className="w-4 h-4" /></button>
+                <button onClick={() => setShowCalculator(false)} className={`p-2 rounded-xl transition-colors ${isDarkMode ? 'bg-[#0b0410] hover:bg-[#2d144d] text-purple-300/70' : 'bg-white hover:bg-slate-100 text-slate-600 border border-slate-200'}`}><X className="w-4 h-4" /></button>
               </div>
               <div className="p-6">
-                <div className={`rounded-2xl p-5 mb-6 text-right overflow-hidden break-all min-h-[5rem] flex items-end justify-end shadow-inner border ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-100 border-slate-200'}`}>
+                <div className={`rounded-2xl p-5 mb-6 text-right overflow-hidden break-all min-h-[5rem] flex items-end justify-end shadow-inner border ${isDarkMode ? 'bg-[#0b0410] border-[#321759]' : 'bg-slate-100 border-slate-200'}`}>
                   <span className={`text-4xl font-mono tracking-widest font-light ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{calcInput || '0'}</span>
                 </div>
                 <div className="grid grid-cols-4 gap-3 md:gap-4">
                   {['C','⌫','%','/','7','8','9','*','4','5','6','-','1','2','3','+','0',',','='].map(btn => (
-                    <button key={btn} onClick={() => handleCalcClickWrapper(btn)} className={`py-4 rounded-2xl font-black text-xl transition-all active:scale-90 shadow-sm border ${btn === '0' ? 'col-span-2' : ''} ${btn === 'C' ? 'bg-rose-500 hover:bg-rose-600 text-white border-transparent' : btn === '=' ? 'bg-indigo-600 hover:bg-indigo-700 text-white border-transparent' : ['/','*','-','+'].includes(btn) ? (isDarkMode ? 'bg-slate-800 text-indigo-400 hover:bg-slate-700 border-slate-700' : 'bg-slate-100 text-indigo-600 hover:bg-slate-200 border-slate-200') : ['⌫','%'].includes(btn) ? (isDarkMode ? 'bg-slate-700 text-slate-300 hover:bg-slate-600 border-slate-600' : 'bg-slate-200 text-slate-700 hover:bg-slate-300 border-slate-300') : (isDarkMode ? 'bg-slate-800 text-white hover:bg-slate-700 border-slate-700' : 'bg-white text-slate-900 hover:bg-slate-50 border-slate-200')}`}>
+                    <button key={btn} onClick={() => handleCalcClickWrapper(btn)} className={`py-4 rounded-2xl font-black text-xl transition-all active:scale-90 shadow-sm border ${btn === '0' ? 'col-span-2' : ''} ${btn === 'C' ? 'bg-rose-500 hover:bg-rose-600 text-white border-transparent' : btn === '=' ? 'bg-indigo-600 hover:bg-indigo-700 text-white border-transparent' : ['/','*','-','+'].includes(btn) ? (isDarkMode ? 'bg-[#0b0410] text-indigo-400 hover:bg-[#2d144d] border-[#321759]' : 'bg-slate-100 text-indigo-600 hover:bg-slate-200 border-slate-200') : ['⌫','%'].includes(btn) ? (isDarkMode ? 'bg-[#2d144d] text-purple-200 hover:bg-[#3e1c66] border-[#441f74]' : 'bg-slate-200 text-slate-700 hover:bg-slate-300 border-slate-300') : (isDarkMode ? 'bg-[#1a0b2e] text-white hover:bg-[#2d144d] border-[#321759]' : 'bg-white text-slate-900 hover:bg-slate-50 border-slate-200')}`}>
                       {btn}
                     </button>
                   ))}
@@ -2341,25 +2350,25 @@ export default function App() {
 
         {/* MODAL CONSULTOR DE COMPRAS IA */}
         {showPurchaseModal && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
-            <div className={`rounded-[2rem] w-full max-w-md max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+          <div className="fixed inset-0 bg-[#0b0410]/80 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
+            <div className={`rounded-[2rem] w-full max-w-md max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759]' : 'bg-white border-slate-200'}`}>
               <div className={`p-6 border-b flex justify-between items-center ${isDarkMode ? 'bg-purple-900/30 border-purple-800/50 text-purple-100' : 'bg-purple-50 border-purple-200/50 text-purple-900'}`}>
                 <h3 className="font-black tracking-tight flex items-center gap-3 text-xl">
                   <div className="p-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl shadow-lg shadow-purple-500/30"><ShoppingBag className="w-6 h-6 text-white"/></div>
                   Consultor de Compras
                 </h3>
-                <button onClick={() => setShowPurchaseModal(false)} className={`p-2 rounded-xl transition-colors border ${isDarkMode ? 'bg-slate-800 hover:bg-slate-700 text-purple-400 border-slate-600' : 'bg-white hover:bg-slate-100 text-purple-700 border-slate-200'}`}><X className="w-5 h-5"/></button>
+                <button onClick={() => setShowPurchaseModal(false)} className={`p-2 rounded-xl transition-colors border ${isDarkMode ? 'bg-[#1a0b2e] hover:bg-[#2d144d] text-purple-400 border-[#321759]' : 'bg-white hover:bg-slate-100 text-purple-700 border-slate-200'}`}><X className="w-5 h-5"/></button>
               </div>
               <div className="p-8 overflow-y-auto flex-1">
-                <p className={`text-xs font-bold mb-6 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>A IA analisa o seu saldo atual, entradas e gastos do mês para aconselhar se deve avançar com a compra.</p>
+                <p className={`text-xs font-bold mb-6 ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>A IA analisa o seu saldo atual, entradas e gastos do mês para aconselhar se deve avançar com a compra.</p>
                 <form onSubmit={handleAnalyzePurchase} className="space-y-5 mb-6">
                   <div>
-                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>O que deseja comprar?</label>
-                    <input type="text" required value={purchaseItemName} onChange={(e) => setPurchaseItemName(e.target.value)} placeholder="Ex: Novo Smartphone" className={`w-full px-5 py-4 rounded-2xl outline-none focus:ring-4 transition-all font-bold shadow-sm border ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white focus:border-purple-500 focus:ring-purple-500/10' : 'bg-white border-slate-300 text-slate-900 focus:border-purple-500 focus:ring-purple-500/10'}`} />
+                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>O que deseja comprar?</label>
+                    <input type="text" required value={purchaseItemName} onChange={(e) => setPurchaseItemName(e.target.value)} placeholder="Ex: Novo Smartphone" className={`w-full px-5 py-4 rounded-2xl outline-none focus:ring-4 transition-all font-bold shadow-sm border ${isDarkMode ? 'bg-[#0b0410] border-[#321759] text-white focus:border-purple-500 focus:ring-purple-500/10' : 'bg-white border-slate-300 text-slate-900 focus:border-purple-500 focus:ring-purple-500/10'}`} />
                   </div>
                   <div>
-                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Qual o valor (R$)?</label>
-                    <input type="number" step="0.01" required value={purchaseItemPrice} onChange={(e) => setPurchaseItemPrice(e.target.value)} placeholder="Ex: 3500.00" className={`w-full px-5 py-4 rounded-2xl outline-none focus:ring-4 transition-all font-bold shadow-sm border ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white focus:border-purple-500 focus:ring-purple-500/10' : 'bg-white border-slate-300 text-slate-900 focus:border-purple-500 focus:ring-purple-500/10'}`} />
+                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>Qual o valor (R$)?</label>
+                    <input type="number" step="0.01" required value={purchaseItemPrice} onChange={(e) => setPurchaseItemPrice(e.target.value)} placeholder="Ex: 3500.00" className={`w-full px-5 py-4 rounded-2xl outline-none focus:ring-4 transition-all font-bold shadow-sm border ${isDarkMode ? 'bg-[#0b0410] border-[#321759] text-white focus:border-purple-500 focus:ring-purple-500/10' : 'bg-white border-slate-300 text-slate-900 focus:border-purple-500 focus:ring-purple-500/10'}`} />
                   </div>
                   <button disabled={isAdvisingPurchase} type="submit" className={`w-full py-4 text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 ${isDarkMode ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500' : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700'}`}>
                     {isAdvisingPurchase ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
@@ -2368,10 +2377,10 @@ export default function App() {
                 </form>
 
                 {purchaseAdvice && (
-                  <div className={`pt-6 border-t animate-in fade-in ${isDarkMode ? 'border-slate-700' : 'border-slate-200/50'}`}>
+                  <div className={`pt-6 border-t animate-in fade-in ${isDarkMode ? 'border-[#321759]' : 'border-slate-200/50'}`}>
                     <h4 className={`text-xs font-black uppercase tracking-widest mb-3 flex items-center gap-2 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`}><Wand2 className="w-4 h-4"/> Veredicto da IA:</h4>
-                    <div className={`text-sm font-bold leading-relaxed space-y-3 ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                       {purchaseAdvice.split('\n').map((l, i) => l.trim() && <p key={i} className={`p-4 rounded-xl shadow-sm border ${isDarkMode ? 'bg-slate-900/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>{l}</p>)}
+                    <div className={`text-sm font-bold leading-relaxed space-y-3 ${isDarkMode ? 'text-purple-200' : 'text-slate-700'}`}>
+                       {purchaseAdvice.split('\n').map((l, i) => l.trim() && <p key={i} className={`p-4 rounded-xl shadow-sm border ${isDarkMode ? 'bg-[#0b0410]/50 border-[#321759]' : 'bg-slate-50 border-slate-200'}`}>{l}</p>)}
                     </div>
                   </div>
                 )}
@@ -2382,8 +2391,8 @@ export default function App() {
 
         {/* MODAL UNIVERSAL PARA CONFIRMAÇÕES E PROMPTS */}
         {uiModal.type && (
-          <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 z-[200] no-print">
-            <div className={`rounded-[2rem] shadow-2xl w-full max-w-sm p-8 animate-in zoom-in-95 border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+          <div className="fixed inset-0 bg-[#0b0410]/80 backdrop-blur-sm flex items-center justify-center p-4 z-[300] no-print">
+            <div className={`rounded-[2rem] shadow-2xl w-full max-w-sm p-8 animate-in zoom-in-95 border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759]' : 'bg-white border-slate-200'}`}>
               <div className="flex justify-between items-start mb-5">
                 <h3 className={`font-black text-xl tracking-tight flex items-center gap-3 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                   {uiModal.type === 'alert' && <div className={`p-2 rounded-xl ${isDarkMode ? 'bg-indigo-900/30' : 'bg-indigo-100'}`}><Info className={`w-6 h-6 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} /></div>}
@@ -2396,7 +2405,7 @@ export default function App() {
                 )}
               </div>
               
-              <p className={`text-sm font-bold mb-6 leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{uiModal.message}</p>
+              <p className={`text-sm font-bold mb-6 leading-relaxed ${isDarkMode ? 'text-purple-200' : 'text-slate-600'}`}>{uiModal.message}</p>
               
               {uiModal.type === 'prompt' && (
                 <input 
@@ -2412,13 +2421,13 @@ export default function App() {
                     } 
                   }}
                   placeholder="Escreva aqui..." 
-                  className={`w-full px-5 py-4 mb-6 rounded-xl outline-none focus:ring-4 transition-all font-black text-lg shadow-sm border ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white focus:border-indigo-500 focus:ring-indigo-500/10' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500 focus:ring-indigo-500/10'}`} 
+                  className={`w-full px-5 py-4 mb-6 rounded-xl outline-none focus:ring-4 transition-all font-black text-lg shadow-sm border ${isDarkMode ? 'bg-[#0b0410] border-[#321759] text-white focus:border-indigo-500 focus:ring-indigo-500/10' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500 focus:ring-indigo-500/10'}`} 
                 />
               )}
 
               <div className="flex gap-3 mt-2">
                 {uiModal.type !== 'alert' && (
-                  <button onClick={closeUiModal} className={`flex-1 py-4 font-black uppercase tracking-widest text-[10px] rounded-xl transition-all shadow-sm border ${isDarkMode ? 'bg-slate-900/50 border-slate-700 text-slate-300 hover:bg-slate-700' : 'bg-slate-50 border-slate-200/50 text-slate-700 hover:bg-slate-100'}`}>Cancelar</button>
+                  <button onClick={closeUiModal} className={`flex-1 py-4 font-black uppercase tracking-widest text-[10px] rounded-xl transition-all shadow-sm border ${isDarkMode ? 'bg-[#0b0410]/50 border-[#321759] text-purple-300/70 hover:bg-[#2d144d]' : 'bg-slate-50 border-slate-200/50 text-slate-700 hover:bg-slate-100'}`}>Cancelar</button>
                 )}
                 <button 
                   onClick={() => {
