@@ -427,28 +427,35 @@ export default function App() {
     
     // Motor de Regras Avançado com as principais lojas/termos do Brasil
     const smartCategories = {
-      'Transporte': ['uber', '99', 'indrive', 'taxi', 'gasolina', 'posto', 'combustivel', 'etanol', 'diesel', 'pedagio', 'estacionamento', 'sem parar', 'veloe', 'onibus', 'metro', 'cptm', 'sptrans', 'passagem', 'voo', 'gol', 'latam', 'azul', 'localiza', 'rentcars'],
-      'Alimentação': ['ifood', 'rappi', 'ze delivery', 'mcdonalds', 'mcdonald', 'burger king', 'bk', 'bobs', 'subway', 'outback', 'habibs', 'kfc', 'pizza', 'pizzaria', 'esfiha', 'sushi', 'restaurante', 'padaria', 'lanche', 'bar', 'pub', 'sorvete', 'acai', 'doce', 'cafe', 'starbucks', 'kopenhagen'],
-      'Supermercado': ['mercado', 'supermercado', 'atacadao', 'carrefour', 'assai', 'pao de acucar', 'extra', 'muffato', 'sonda', 'dia', 'hortifruti', 'acougue', 'mercearia', 'bistek', 'zaffari', 'giassi'],
-      'Contas Fixas': ['luz', 'enel', 'cpfl', 'copel', 'cemig', 'light', 'agua', 'sabesp', 'sanepar', 'copasa', 'internet', 'vivo', 'claro', 'tim', 'oi', 'tv', 'iptu', 'ipva', 'gas', 'condominio', 'seguro', 'mensalidade', 'energia', 'celular', 'plano'],
-      'Moradia': ['aluguel', 'imobiliaria', 'quinto andar', 'quintoandar', 'reforma', 'construcao', 'telhanorte', 'leroy merlin', 'c&c', 'mobly', 'marceneiro', 'pedreiro', 'encanador', 'eletricista', 'casa'],
-      'Lazer': ['netflix', 'spotify', 'amazon', 'prime video', 'disney', 'hbo', 'max', 'cinema', 'cinemark', 'cinepolis', 'ingresso', 'show', 'teatro', 'festa', 'balada', 'jogo', 'steam', 'playstation', 'xbox', 'nintendo', 'viagem', 'hotel', 'airbnb', 'pousada'],
-      'Saúde': ['farmacia', 'drogaria', 'drogasil', 'pacheco', 'sao paulo', 'raia', 'venancio', 'medico', 'consulta', 'exame', 'dentista', 'terapia', 'psicologo', 'unimed', 'amil', 'bradesco saude', 'sulamerica', 'hospital', 'pronto socorro', 'remedio', 'medicamento'],
-      'Educação': ['escola', 'faculdade', 'universidade', 'curso', 'udemy', 'alura', 'hotmart', 'livro', 'saraiva', 'cultura', 'mensalidade', 'creche', 'ingles', 'idiomas', 'material escolar', 'papelaria', 'kalunga'],
-      'Vestuário': ['roupa', 'tenis', 'sapato', 'shein', 'shopee', 'aliexpress', 'zara', 'renner', 'cea', 'c&a', 'riachuelo', 'centauro', 'marisa', 'nike', 'adidas', 'puma', 'asics', 'shopping', 'loja', 'boutique', 'acessorio', 'joia'],
-      'Pets': ['pet', 'petshop', 'cobasi', 'petz', 'racao', 'veterinario', 'vacina', 'banho', 'tosa', 'cachorro', 'gato', 'bravecto']
+      'Transporte': ['uber', '99', 'indrive', 'taxi', 'gasolina', 'posto', 'combustivel', 'etanol', 'diesel', 'pedagio', 'estacionamento', 'sem parar', 'veloe', 'onibus', 'metro', 'cptm', 'sptrans', 'passagem', 'voo', 'gol', 'latam', 'azul', 'localiza', 'rentcars', 'oficina', 'mecanico', 'pneu', 'moto', 'carro', 'multa'],
+      'Alimentação': ['ifood', 'rappi', 'ze delivery', 'mcdonalds', 'mcdonald', 'burger king', 'bk', 'bobs', 'subway', 'outback', 'habibs', 'kfc', 'pizza', 'pizzaria', 'esfiha', 'sushi', 'restaurante', 'padaria', 'lanche', 'bar', 'pub', 'sorvete', 'acai', 'doce', 'cafe', 'starbucks', 'kopenhagen', 'churrasco', 'comida', 'burguer', 'hamburguer', 'cachorro quente', 'hot dog', 'pastel', 'salgado', 'refeicao', 'almoco', 'jantar', 'bebida', 'cerveja', 'refrigerante', 'agua', 'bolo'],
+      'Supermercado': ['mercado', 'supermercado', 'atacadao', 'carrefour', 'assai', 'pao de acucar', 'extra', 'muffato', 'sonda', 'dia', 'hortifruti', 'acougue', 'mercearia', 'bistek', 'zaffari', 'giassi', 'sacolao', 'feira', 'frios', 'limpeza'],
+      'Contas Fixas': ['luz', 'enel', 'cpfl', 'copel', 'cemig', 'light', 'agua', 'sabesp', 'sanepar', 'copasa', 'internet', 'vivo', 'claro', 'tim', 'oi', 'tv', 'iptu', 'ipva', 'gas', 'condominio', 'seguro', 'mensalidade', 'energia', 'celular', 'plano', 'assinatura', 'provedor'],
+      'Moradia': ['aluguel', 'imobiliaria', 'quinto andar', 'quintoandar', 'reforma', 'construcao', 'telhanorte', 'leroy merlin', 'c&c', 'mobly', 'marceneiro', 'pedreiro', 'encanador', 'eletricista', 'casa', 'apartamento', 'prestacao', 'financiamento'],
+      'Lazer': ['netflix', 'spotify', 'amazon', 'prime video', 'disney', 'hbo', 'max', 'cinema', 'cinemark', 'cinepolis', 'ingresso', 'show', 'teatro', 'festa', 'balada', 'jogo', 'steam', 'playstation', 'xbox', 'nintendo', 'viagem', 'hotel', 'airbnb', 'pousada', 'parque', 'clube'],
+      'Saúde': ['farmacia', 'drogaria', 'drogasil', 'pacheco', 'sao paulo', 'raia', 'venancio', 'medico', 'consulta', 'exame', 'dentista', 'terapia', 'psicologo', 'unimed', 'amil', 'bradesco saude', 'sulamerica', 'hospital', 'pronto socorro', 'remedio', 'medicamento', 'academia', 'smart fit', 'smartfit', 'suplemento', 'whey', 'crossfit'],
+      'Educação': ['escola', 'faculdade', 'universidade', 'curso', 'udemy', 'alura', 'hotmart', 'livro', 'saraiva', 'cultura', 'mensalidade', 'creche', 'ingles', 'idiomas', 'material escolar', 'papelaria', 'kalunga', 'caderno', 'caneta'],
+      'Vestuário': ['roupa', 'tenis', 'sapato', 'shein', 'shopee', 'aliexpress', 'zara', 'renner', 'cea', 'c&a', 'riachuelo', 'centauro', 'marisa', 'nike', 'adidas', 'puma', 'asics', 'shopping', 'loja', 'boutique', 'acessorio', 'joia', 'camisa', 'camiseta', 'calca', 'short', 'vestido', 'bolsa', 'mochila'],
+      'Pets': ['pet', 'petshop', 'cobasi', 'petz', 'racao', 'veterinario', 'vacina', 'banho', 'tosa', 'cachorro', 'gato', 'bravecto', 'nexgard', 'brinquedo']
     };
 
     if (type === 'expense' && !editingId && !isCategorizing) {
+      let foundCategory = 'Outros'; // Define "Outros" como padrão
+
       for (const [catName, keywords] of Object.entries(smartCategories)) {
         // Confirma se a categoria existe no painel do usuário
         if (categories.expense.includes(catName)) {
           // Se alguma palavra chave for encontrada dentro do que você digitou
           if (keywords.some(keyword => lowerVal.includes(keyword))) {
-            setCategory(catName);
+            foundCategory = catName;
             break; // Sai do loop assim que encontrar a primeira correspondência
           }
         }
+      }
+      
+      // Atualiza a categoria com a encontrada ou com "Outros"
+      if (categories.expense.includes(foundCategory)) {
+        setCategory(foundCategory);
       }
     }
   };
@@ -940,7 +947,7 @@ export default function App() {
             <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1.5 sm:mt-2">
               <span className={`px-2 py-1 rounded-lg uppercase tracking-widest text-[9px] sm:text-[10px] font-black border ${t.type === 'expense' ? (isDarkMode ? 'bg-rose-900/30 border-rose-800/50 text-rose-300' : 'bg-rose-50 border-rose-200 text-rose-700') : t.type === 'income' ? (isDarkMode ? 'bg-emerald-900/30 border-emerald-800/50 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-700') : (isDarkMode ? 'bg-indigo-900/30 border-indigo-800/50 text-indigo-300' : 'bg-indigo-50 border-indigo-200 text-indigo-700')}`}>{t.category}</span>
               
-              {/* NOVO: Tag visual de Cartão, se for pago em cartão */}
+              {/* Tag visual de Cartão, se for pago em cartão */}
               {t.type === 'expense' && t.paymentMethod && t.paymentMethod !== 'Dinheiro' && (
                 <span className={`px-2 py-1 rounded-lg uppercase tracking-widest text-[9px] sm:text-[10px] font-black border flex items-center gap-1 ${isDarkMode ? 'bg-sky-900/30 border-sky-800/50 text-sky-300' : 'bg-sky-50 border-sky-200 text-sky-700'}`}>
                   <CreditCard className="w-3 h-3" /> {t.paymentMethod}
@@ -953,9 +960,9 @@ export default function App() {
           </div>
         </div>
         
-        <div className={`flex flex-row items-center justify-between sm:justify-end gap-3 sm:gap-5 w-full sm:w-auto mt-3 sm:mt-0 pt-3 sm:pt-0 sm:border-t-0 border-t ${isDarkMode ? 'border-[#321759]' : 'border-slate-200/50'}`}>
-          <span className={`font-black tracking-tight text-lg sm:text-xl md:text-2xl break-words max-w-[150px] sm:max-w-[200px] md:max-w-none text-right ${t.type === 'income' ? (isDarkMode ? 'text-emerald-400' : 'text-emerald-600') : t.type === 'expense' ? (isDarkMode ? 'text-rose-400' : 'text-rose-600') : (isDarkMode ? 'text-indigo-400' : 'text-indigo-600')} ${isPending ? 'opacity-60' : ''}`}>
-            {t.type === 'income' ? '+' : '-'} {formatCurrency(t.amount)}
+        <div className={`flex flex-row items-center justify-between sm:justify-end gap-3 sm:gap-5 w-full sm:w-auto mt-3 sm:mt-0 pt-3 sm:pt-0 sm:border-t-0 border-t min-w-0 ${isDarkMode ? 'border-[#321759]' : 'border-slate-200/50'}`}>
+          <span className={`font-black tracking-tight text-lg sm:text-xl md:text-2xl flex-1 text-left sm:text-right sm:flex-none break-words min-w-0 ${t.type === 'income' ? (isDarkMode ? 'text-emerald-400' : 'text-emerald-600') : t.type === 'expense' ? (isDarkMode ? 'text-rose-400' : 'text-rose-600') : (isDarkMode ? 'text-indigo-400' : 'text-indigo-600')} ${isPending ? 'opacity-60' : ''}`}>
+            {t.type === 'income' ? '+' : '-'}&nbsp;{formatCurrency(t.amount)}
           </span>
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <button onClick={() => { handleEdit(t); setShowTransactionModal(true); }} className={`p-2.5 sm:p-3 rounded-xl transition-all shadow-sm active:scale-95 border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759] text-purple-300/70 hover:bg-amber-900/20 hover:text-amber-400 hover:border-amber-500/50' : 'bg-white border-slate-300 text-slate-500 hover:bg-amber-50 hover:text-amber-600 hover:border-amber-400'}`}><Edit className="w-4 h-4 sm:w-5 sm:h-5" /></button>
@@ -1191,7 +1198,7 @@ export default function App() {
         )}
         <style dangerouslySetInnerHTML={{__html: `@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');`}} />
         <div className={`min-h-screen flex items-center justify-center p-4 relative overflow-hidden ${isDarkMode ? 'bg-[#0b0410]' : 'bg-slate-50'}`} style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}>
-          <div className={`w-full max-w-md mx-4 relative z-10 p-8 md:p-12 rounded-[2.5rem] shadow-2xl transition-all duration-500 ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759] shadow-purple-900/20' : 'bg-white border-slate-200 shadow-indigo-900/5'}`}>
+          <div className={`w-full max-w-md mx-4 relative z-10 p-8 md:p-12 rounded-[2.5rem] shadow-2xl transition-all duration-500 ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759] shadow-purple-900/20' : 'bg-white border border-slate-200 shadow-indigo-900/5'}`}>
             <div className="flex justify-center mb-8">
               <div className={`w-32 h-32 rounded-[2rem] shadow-xl overflow-hidden shrink-0 flex items-center justify-center p-1 ${isDarkMode ? 'bg-[#2d144d] border-[#441f74] shadow-purple-900/20' : 'bg-white border-slate-100 shadow-indigo-600/10'} border-2 relative group`}>
                 <img src="/logo.jpg" alt="100 Aperto" className="w-full h-full object-cover scale-[1.05] rounded-[1.8rem] transition-transform duration-700 group-hover:scale-[1.12]" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
@@ -1495,18 +1502,18 @@ export default function App() {
                                       <span className={`text-[10px] sm:text-xs font-bold uppercase tracking-widest mt-0.5 ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>{group.transactions.length} Registo{group.transactions.length > 1 ? 's' : ''}</span>
                                     </div>
                                   </div>
-                                  <div className="flex items-center gap-3 sm:gap-5">
-                                    <div className="flex flex-col items-end justify-center">
-                                      <span className={`font-black text-xl sm:text-2xl tracking-tight text-right ${group.realNetTotal < 0 ? (isDarkMode ? 'text-rose-400' : 'text-rose-600') : (isDarkMode ? 'text-emerald-400' : 'text-emerald-600')}`}>
-                                        {group.realNetTotal < 0 ? '-' : '+'} {formatCurrency(Math.abs(group.realNetTotal))}
+                                  <div className="flex items-center gap-3 sm:gap-5 min-w-0 shrink-0">
+                                    <div className="flex flex-col items-end justify-center min-w-0">
+                                      <span className={`font-black text-xl sm:text-2xl tracking-tight text-right break-words ${group.realNetTotal < 0 ? (isDarkMode ? 'text-rose-400' : 'text-rose-600') : (isDarkMode ? 'text-emerald-400' : 'text-emerald-600')}`}>
+                                        {group.realNetTotal < 0 ? '-' : '+'}&nbsp;{formatCurrency(Math.abs(group.realNetTotal))}
                                       </span>
                                       {group.hasPending && (
-                                        <span className={`text-[10px] font-bold uppercase tracking-widest mt-0.5 ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>
-                                          Previsto: {group.estimatedNetTotal < 0 ? '-' : '+'} {formatCurrency(Math.abs(group.estimatedNetTotal))}
+                                        <span className={`text-[10px] font-bold uppercase tracking-widest mt-0.5 text-right break-words ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>
+                                          Previsto: {group.estimatedNetTotal < 0 ? '-' : '+'}&nbsp;{formatCurrency(Math.abs(group.estimatedNetTotal))}
                                         </span>
                                       )}
                                     </div>
-                                    <div className={`p-1.5 rounded-xl transition-colors ${isExpanded ? (isDarkMode ? 'bg-[#321759]' : 'bg-slate-200') : 'bg-transparent'}`}>
+                                    <div className={`p-1.5 rounded-xl shrink-0 transition-colors ${isExpanded ? (isDarkMode ? 'bg-[#321759]' : 'bg-slate-200') : 'bg-transparent'}`}>
                                       <ChevronDown className={`w-5 h-5 sm:w-6 sm:h-6 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''} ${isDarkMode ? 'text-purple-400' : 'text-slate-400'}`} />
                                     </div>
                                   </div>
@@ -2137,7 +2144,7 @@ export default function App() {
           </div>
         </BaseModal>
 
-        {/* MODAL: ALERTAS E PROMPTS (UI Genérica) */}
+        {/* MODAL UNIVERSAL PARA CONFIRMAÇÕES E PROMPTS */}
         {uiModal.type && (
           <div className="fixed inset-0 bg-[#0b0410]/80 backdrop-blur-sm flex items-center justify-center p-4 z-[300] no-print">
             <div className={`rounded-[2rem] shadow-2xl w-full max-w-sm p-8 animate-in zoom-in-95 border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759]' : 'bg-white border-slate-200'}`}>
@@ -2152,15 +2159,41 @@ export default function App() {
                   <button onClick={closeUiModal} className={`p-2 rounded-xl transition-colors border border-transparent ${isDarkMode ? 'text-slate-400 hover:bg-slate-700 hover:border-slate-600' : 'text-slate-400 hover:bg-slate-100 hover:border-slate-200'}`}><X className="w-5 h-5" /></button>
                 )}
               </div>
+              
               <p className={`text-sm font-bold mb-6 leading-relaxed ${isDarkMode ? 'text-purple-200' : 'text-slate-600'}`}>{uiModal.message}</p>
+              
               {uiModal.type === 'prompt' && (
-                <input type="text" autoFocus value={uiModal.inputValue} onChange={(e) => setUiModal({...uiModal, inputValue: e.target.value})} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); uiModal.onConfirm(uiModal.inputValue); closeUiModal(); } }} placeholder="Escreva aqui..." className={formStyles.input(isDarkMode) + " mb-6"} />
+                <input 
+                  type="text" 
+                  autoFocus
+                  value={uiModal.inputValue} 
+                  onChange={(e) => setUiModal({...uiModal, inputValue: e.target.value})} 
+                  onKeyDown={(e) => { 
+                    if (e.key === 'Enter') { 
+                      e.preventDefault(); 
+                      uiModal.onConfirm(uiModal.inputValue); 
+                      closeUiModal(); 
+                    } 
+                  }}
+                  placeholder="Escreva aqui..." 
+                  className={`w-full px-5 py-4 mb-6 rounded-xl outline-none focus:ring-4 transition-all font-black text-lg shadow-sm border ${isDarkMode ? 'bg-[#0b0410] border-[#321759] text-white focus:border-indigo-500 focus:ring-indigo-500/10' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500 focus:ring-indigo-500/10'}`} 
+                />
               )}
+
               <div className="flex gap-3 mt-2">
                 {uiModal.type !== 'alert' && (
                   <button onClick={closeUiModal} className={`flex-1 py-4 font-black uppercase tracking-widest text-[10px] rounded-xl transition-all shadow-sm border ${isDarkMode ? 'bg-[#0b0410]/50 border-[#321759] text-purple-300/70 hover:bg-[#2d144d]' : 'bg-slate-50 border-slate-200/50 text-slate-700 hover:bg-slate-100'}`}>Cancelar</button>
                 )}
-                <button onClick={() => { if (uiModal.onConfirm) { if (uiModal.type === 'prompt') uiModal.onConfirm(uiModal.inputValue); else uiModal.onConfirm(); } closeUiModal(); }} className={`flex-1 py-4 text-white font-black uppercase tracking-widest text-[10px] rounded-xl transition-all shadow-xl active:scale-95 ${uiModal.type === 'confirm' ? (isDarkMode ? 'bg-rose-600 hover:bg-rose-500 shadow-rose-900/30' : 'bg-rose-500 hover:bg-rose-600 shadow-rose-500/30') : (isDarkMode ? 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-900/30' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/30')}`}>
+                <button 
+                  onClick={() => {
+                    if (uiModal.onConfirm) {
+                      if (uiModal.type === 'prompt') uiModal.onConfirm(uiModal.inputValue);
+                      else uiModal.onConfirm();
+                    }
+                    closeUiModal();
+                  }} 
+                  className={`flex-1 py-4 text-white font-black uppercase tracking-widest text-[10px] rounded-xl transition-all shadow-xl active:scale-95 ${uiModal.type === 'confirm' ? (isDarkMode ? 'bg-rose-600 hover:bg-rose-500 shadow-rose-900/30' : 'bg-rose-500 hover:bg-rose-600 shadow-rose-500/30') : (isDarkMode ? 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-900/30' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/30')}`}
+                >
                   {uiModal.type === 'alert' ? 'Entendi' : 'Confirmar'}
                 </button>
               </div>
