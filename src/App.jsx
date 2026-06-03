@@ -115,9 +115,9 @@ const BaseModal = ({ isOpen, onClose, title, icon: Icon, iconBg, iconColor, isDa
 // CONFIGURAÇÕES PADRÃO
 // ----------------------------------------------------------------------
 const defaultCategories = {
-  income: ['Salário', 'Acerto', 'Rendimento', 'Outros'],
-  expense: ['Click', 'MP', 'Digio', 'Inter', 'Neon', 'Ponto', 'Contas Fixas', 'Alimentação', 'Transporte', 'Lazer', 'Saúde', 'Outros'],
-  investment: ['Reserva de Emergência', 'Ações', 'Fundos', 'CDB/Tesouro']
+  income: ['Salário', 'Acerto', 'Rendimento', 'Cashback', 'Vendas', 'Outros'],
+  expense: ['Alimentação', 'Supermercado', 'Transporte', 'Contas Fixas', 'Moradia', 'Lazer', 'Saúde', 'Educação', 'Vestuário', 'Pets', 'Outros'],
+  investment: ['Reserva de Emergência', 'Ações', 'Fundos Imobiliários', 'CDB/Tesouro', 'Cripto']
 };
 
 const defaultCards = [
@@ -187,23 +187,48 @@ export default function App() {
   const [amount, setAmount] = useState('');
   const [type, setType] = useState('expense');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [category, setCategory] = useState('Click');
+  const [category, setCategory] = useState('Outros');
+  const [paymentMethod, setPaymentMethod] = useState('Dinheiro');
   const [isInstallment, setIsInstallment] = useState(false);
   const [installmentsCount, setInstallmentsCount] = useState(2);
   const [installmentType, setInstallmentType] = useState('parcela');
   const [isPaid, setIsPaid] = useState(true);
   const [isQuickAdd, setIsQuickAdd] = useState(false);
 
-  // Simulador de Investimentos
-  const [simInitial, setSimInitial] = useState(1000);
-  const [simMonthly, setSimMonthly] = useState(200);
-  const [simRate, setSimRate] = useState(0.8);
-  const [simYears, setSimYears] = useState(5);
+  // Simulador de Investimentos (Agora com gravação na memória)
+  const [simInitial, setSimInitial] = useState(() => {
+    const saved = localStorage.getItem('finances_sim_initial');
+    return saved !== null ? Number(saved) : 1000;
+  });
+  const [simMonthly, setSimMonthly] = useState(() => {
+    const saved = localStorage.getItem('finances_sim_monthly');
+    return saved !== null ? Number(saved) : 200;
+  });
+  const [simRate, setSimRate] = useState(() => {
+    const saved = localStorage.getItem('finances_sim_rate');
+    return saved !== null ? Number(saved) : 0.8;
+  });
+  const [simYears, setSimYears] = useState(() => {
+    const saved = localStorage.getItem('finances_sim_years');
+    return saved !== null ? Number(saved) : 5;
+  });
 
-  // Filtros
+  // Atualiza a memória sempre que as barras do simulador são movidas
+  useEffect(() => {
+    localStorage.setItem('finances_sim_initial', simInitial);
+    localStorage.setItem('finances_sim_monthly', simMonthly);
+    localStorage.setItem('finances_sim_rate', simRate);
+    localStorage.setItem('finances_sim_years', simYears);
+  }, [simInitial, simMonthly, simRate, simYears]);
+
+  // Filtros & Extrato Grouping
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [searchTerm, setSearchTerm] = useState('');
+  const [extratoViewMode, setExtratoViewMode] = useState('grouped'); // 'chronological' | 'grouped'
+  const [expandedGroups, setExpandedGroups] = useState({});
+
+  const toggleGroup = (cat) => setExpandedGroups(prev => ({ ...prev, [cat]: !prev[cat] }));
 
   // Modais de Ferramentas & IA
   const [showAiModal, setShowAiModal] = useState(false);
@@ -292,8 +317,16 @@ export default function App() {
     if (localGoals) setGoals(JSON.parse(localGoals));
     const localBudgets = localStorage.getItem(`finances_budgets_${userId}`);
     if (localBudgets) setBudgets(JSON.parse(localBudgets));
+    
+    // Filtro Automático para Limpar nomes de Cartões antigos que ficaram na cache
     const localCats = localStorage.getItem(`finances_categories_${userId}`);
-    if (localCats) setCategories(JSON.parse(localCats));
+    if (localCats) {
+      let parsedCats = JSON.parse(localCats);
+      const legacyCards = ['Click', 'MP', 'Digio', 'Inter', 'Neon', 'Ponto'];
+      parsedCats.expense = [...new Set([...defaultCategories.expense, ...parsedCats.expense.filter(c => !legacyCards.includes(c))])];
+      setCategories(parsedCats);
+    }
+    
     const localCards = localStorage.getItem(`finances_cards_${userId}`);
     if (localCards) setCards(JSON.parse(localCards));
 
@@ -321,9 +354,9 @@ export default function App() {
             while (currentMonthIter <= limitSalario) {
               let year = currentMonthIter.getFullYear();
               let month = String(currentMonthIter.getMonth() + 1).padStart(2, '0');
-              initialData.push({ id: generateSafeId(), description: 'Salário', amount: 4500, type: 'income', date: `${year}-${month}-11`, category: 'Salário', status: 'paid' });
+              initialData.push({ id: generateSafeId(), description: 'Salário', amount: 4500, type: 'income', date: `${year}-${month}-11`, category: 'Salário', paymentMethod: 'Dinheiro', status: 'paid' });
               if (new Date(year, currentMonthIter.getMonth(), 2) <= limitAcerto) {
-                initialData.push({ id: generateSafeId(), description: 'Acerto', amount: 900, type: 'income', date: `${year}-${month}-02`, category: 'Acerto', status: 'paid' });
+                initialData.push({ id: generateSafeId(), description: 'Acerto', amount: 900, type: 'income', date: `${year}-${month}-02`, category: 'Acerto', paymentMethod: 'Dinheiro', status: 'paid' });
               }
               currentMonthIter.setMonth(currentMonthIter.getMonth() + 1);
             }
@@ -343,7 +376,13 @@ export default function App() {
         (snapshot) => {
           if (snapshot.exists()) {
             const data = snapshot.data();
-            if (data.categories) { setCategories(data.categories); localStorage.setItem(`finances_categories_${userId}`, JSON.stringify(data.categories)); }
+            if (data.categories) { 
+              let parsedCats = data.categories;
+              const legacyCards = ['Click', 'MP', 'Digio', 'Inter', 'Neon', 'Ponto'];
+              parsedCats.expense = [...new Set([...defaultCategories.expense, ...parsedCats.expense.filter(c => !legacyCards.includes(c))])];
+              setCategories(parsedCats); 
+              localStorage.setItem(`finances_categories_${userId}`, JSON.stringify(parsedCats)); 
+            }
             if (data.cards) { setCards(data.cards); localStorage.setItem(`finances_cards_${userId}`, JSON.stringify(data.cards)); }
             if (data.goals) { setGoals(data.goals); localStorage.setItem(`finances_goals_${userId}`, JSON.stringify(data.goals)); }
             if (data.budgets) { setBudgets(data.budgets); localStorage.setItem(`finances_budgets_${userId}`, JSON.stringify(data.budgets)); }
@@ -381,18 +420,34 @@ export default function App() {
 
   const handleDescriptionChange = (val) => {
     setDescription(val);
-    const lowerVal = val.toLowerCase();
-    const dictionary = {
-      'uber': 'Transporte', '99': 'Transporte', 'gasolina': 'Transporte', 'combustivel': 'Transporte', 'posto': 'Transporte',
-      'ifood': 'Alimentação', 'mercado': 'Alimentação', 'padaria': 'Alimentação', 'restaurante': 'Alimentação', 'lanche': 'Alimentação',
-      'luz': 'Contas Fixas', 'água': 'Contas Fixas', 'agua': 'Contas Fixas', 'internet': 'Contas Fixas', 'aluguel': 'Contas Fixas', 'celular': 'Contas Fixas',
-      'netflix': 'Lazer', 'cinema': 'Lazer', 'spotify': 'Lazer', 'jogos': 'Lazer',
-      'farmácia': 'Saúde', 'farmacia': 'Saúde', 'médico': 'Saúde', 'medico': 'Saúde', 'consulta': 'Saúde'
+    
+    // "IA Offline": Normalizar texto (remove acentos, cedilhas e deixa minúsculo)
+    // Ex: "Pão de Açúcar" vira "pao de acucar"
+    const lowerVal = val.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    
+    // Motor de Regras Avançado com as principais lojas/termos do Brasil
+    const smartCategories = {
+      'Transporte': ['uber', '99', 'indrive', 'taxi', 'gasolina', 'posto', 'combustivel', 'etanol', 'diesel', 'pedagio', 'estacionamento', 'sem parar', 'veloe', 'onibus', 'metro', 'cptm', 'sptrans', 'passagem', 'voo', 'gol', 'latam', 'azul', 'localiza', 'rentcars'],
+      'Alimentação': ['ifood', 'rappi', 'ze delivery', 'mcdonalds', 'mcdonald', 'burger king', 'bk', 'bobs', 'subway', 'outback', 'habibs', 'kfc', 'pizza', 'pizzaria', 'esfiha', 'sushi', 'restaurante', 'padaria', 'lanche', 'bar', 'pub', 'sorvete', 'acai', 'doce', 'cafe', 'starbucks', 'kopenhagen'],
+      'Supermercado': ['mercado', 'supermercado', 'atacadao', 'carrefour', 'assai', 'pao de acucar', 'extra', 'muffato', 'sonda', 'dia', 'hortifruti', 'acougue', 'mercearia', 'bistek', 'zaffari', 'giassi'],
+      'Contas Fixas': ['luz', 'enel', 'cpfl', 'copel', 'cemig', 'light', 'agua', 'sabesp', 'sanepar', 'copasa', 'internet', 'vivo', 'claro', 'tim', 'oi', 'tv', 'iptu', 'ipva', 'gas', 'condominio', 'seguro', 'mensalidade', 'energia', 'celular', 'plano'],
+      'Moradia': ['aluguel', 'imobiliaria', 'quinto andar', 'quintoandar', 'reforma', 'construcao', 'telhanorte', 'leroy merlin', 'c&c', 'mobly', 'marceneiro', 'pedreiro', 'encanador', 'eletricista', 'casa'],
+      'Lazer': ['netflix', 'spotify', 'amazon', 'prime video', 'disney', 'hbo', 'max', 'cinema', 'cinemark', 'cinepolis', 'ingresso', 'show', 'teatro', 'festa', 'balada', 'jogo', 'steam', 'playstation', 'xbox', 'nintendo', 'viagem', 'hotel', 'airbnb', 'pousada'],
+      'Saúde': ['farmacia', 'drogaria', 'drogasil', 'pacheco', 'sao paulo', 'raia', 'venancio', 'medico', 'consulta', 'exame', 'dentista', 'terapia', 'psicologo', 'unimed', 'amil', 'bradesco saude', 'sulamerica', 'hospital', 'pronto socorro', 'remedio', 'medicamento'],
+      'Educação': ['escola', 'faculdade', 'universidade', 'curso', 'udemy', 'alura', 'hotmart', 'livro', 'saraiva', 'cultura', 'mensalidade', 'creche', 'ingles', 'idiomas', 'material escolar', 'papelaria', 'kalunga'],
+      'Vestuário': ['roupa', 'tenis', 'sapato', 'shein', 'shopee', 'aliexpress', 'zara', 'renner', 'cea', 'c&a', 'riachuelo', 'centauro', 'marisa', 'nike', 'adidas', 'puma', 'asics', 'shopping', 'loja', 'boutique', 'acessorio', 'joia'],
+      'Pets': ['pet', 'petshop', 'cobasi', 'petz', 'racao', 'veterinario', 'vacina', 'banho', 'tosa', 'cachorro', 'gato', 'bravecto']
     };
+
     if (type === 'expense' && !editingId && !isCategorizing) {
-      for (let key in dictionary) {
-        if (lowerVal.includes(key) && categories.expense.includes(dictionary[key])) {
-          setCategory(dictionary[key]); break;
+      for (const [catName, keywords] of Object.entries(smartCategories)) {
+        // Confirma se a categoria existe no painel do usuário
+        if (categories.expense.includes(catName)) {
+          // Se alguma palavra chave for encontrada dentro do que você digitou
+          if (keywords.some(keyword => lowerVal.includes(keyword))) {
+            setCategory(catName);
+            break; // Sai do loop assim que encontrar a primeira correspondência
+          }
         }
       }
     }
@@ -431,7 +486,9 @@ export default function App() {
     if (!description) return;
     setIsCategorizing(true);
     const contextType = type === 'income' ? 'entrada' : type === 'expense' ? 'gasto' : 'investimento';
-    const prompt = `Estou a registar uma transação do tipo '${contextType}'. A descrição é '${description}'. Da lista: [${categories[type].join(', ')}], escolha a que melhor se adapta. Responda APENAS o nome exato. Se nenhuma servir, responda 'Outros'.`;
+    // Remove card names from AI prompt options for better categorization
+    const availableCats = categories[type].filter(c => !cards.some(card => card.id === c || card.name === c));
+    const prompt = `Estou a registar uma transação do tipo '${contextType}'. A descrição é '${description}'. Da lista: [${availableCats.join(', ')}], escolha a que melhor se adapta. Responda APENAS o nome exato. Se nenhuma servir, responda 'Outros'.`;
     try {
       const suggested = (await fetchWithRetry(prompt)).trim();
       if (suggested && categories[type].includes(suggested)) setCategory(suggested);
@@ -558,18 +615,30 @@ export default function App() {
       newCards = cards.map(c => c.id === oldId ? updatedCard : c);
       if (oldId !== newId) {
         newCategories.expense = newCategories.expense.map(cat => cat === oldId ? newId : cat);
-        txnsToUpdate = transactions.filter(t => t.category === oldId);
+        txnsToUpdate = transactions.filter(t => t.paymentMethod === oldId || t.category === oldId);
       }
     } else {
       newCards = [...cards, updatedCard];
       if (!newCategories.expense.includes(newId)) newCategories.expense = [...newCategories.expense, newId];
     }
     setCards(newCards); setCategories(newCategories);
-    if (isEditing && oldId !== newId) setTransactions(transactions.map(t => t.category === oldId ? { ...t, category: newId } : t));
+    if (isEditing && oldId !== newId) {
+      setTransactions(transactions.map(t => {
+         let updatedT = { ...t };
+         if (t.paymentMethod === oldId) updatedT.paymentMethod = newId;
+         if (t.category === oldId) updatedT.category = newId;
+         return updatedT;
+      }));
+    }
     saveCloudConfig({ cards: newCards, categories: newCategories });
 
     if (isEditing && oldId !== newId && firebaseReady && currentUser) {
-       for (let t of txnsToUpdate) await setDoc(doc(db, 'artifacts', appId, 'public', 'data', `txns_${currentUser.id}`, t.id), { ...t, category: newId }).catch(console.error);
+       for (let t of txnsToUpdate) {
+         let updatedT = { ...t };
+         if (t.paymentMethod === oldId) updatedT.paymentMethod = newId;
+         if (t.category === oldId) updatedT.category = newId;
+         await setDoc(doc(db, 'artifacts', appId, 'public', 'data', `txns_${currentUser.id}`, t.id), updatedT).catch(console.error);
+       }
     }
     setShowCardForm(false);
   };
@@ -608,10 +677,24 @@ export default function App() {
     });
   };
 
-  const resetForm = () => { setEditingId(null); setDescription(''); setAmount(''); setIsInstallment(false); setInstallmentsCount(2); setInstallmentType('parcela'); setIsPaid(true); setIsQuickAdd(false); };
+  const resetForm = () => { 
+    setEditingId(null); setDescription(''); setAmount(''); setIsInstallment(false); 
+    setInstallmentsCount(2); setInstallmentType('parcela'); setIsPaid(true); 
+    setIsQuickAdd(false); setPaymentMethod('Dinheiro');
+  };
   
   const handleQuickAddCard = (cardId) => {
-    resetForm(); setType('expense'); setCategory(cardId); setIsQuickAdd(true); setShowFabMenu(false); setShowTransactionModal(true);
+    resetForm(); 
+    setType('expense'); 
+    setPaymentMethod(cardId); 
+    
+    // Auto-seleciona uma categoria real (que não seja nome de cartão)
+    const firstRealCategory = categories.expense.find(c => !cards.some(card => card.id === c || card.name === c));
+    setCategory(firstRealCategory || 'Outros');
+    
+    setIsQuickAdd(true); 
+    setShowFabMenu(false); 
+    setShowTransactionModal(true);
   };
 
   const handleSaveTransaction = async (e) => {
@@ -620,9 +703,10 @@ export default function App() {
     const numAmount = parseFloat(amount.toString().replace(',', '.'));
     const itemStatus = isPaid ? 'paid' : 'pending'; 
     const safeInstallmentsCount = parseInt(installmentsCount) > 1 ? parseInt(installmentsCount) : 2;
+    const finalPaymentMethod = type === 'expense' ? paymentMethod : 'Dinheiro';
 
     if (editingId) {
-      const updatedTxn = { id: editingId, description, amount: numAmount, type, date, category, status: itemStatus };
+      const updatedTxn = { id: editingId, description, amount: numAmount, type, date, category, paymentMethod: finalPaymentMethod, status: itemStatus };
       setTransactions(transactions.map(t => t.id === editingId ? updatedTxn : t));
       await setDoc(doc(db, 'artifacts', appId, 'public', 'data', `txns_${currentUser.id}`, editingId), updatedTxn).catch(err => { if (err.code === 'permission-denied') setFirebasePermissionError(true); });
     } else {
@@ -635,12 +719,12 @@ export default function App() {
           const currentDate = new Date(startDate.getFullYear(), startDate.getMonth() + i, startDate.getDate());
           if (currentDate.getDate() !== parseInt(day)) currentDate.setDate(0); 
           const formattedDate = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
-          newTransactions.push({ id: generateSafeId(), description: `${description} (${i + 1}/${safeInstallmentsCount})`, amount: installmentAmount, type, date: formattedDate, category, status: itemStatus });
+          newTransactions.push({ id: generateSafeId(), description: `${description} (${i + 1}/${safeInstallmentsCount})`, amount: installmentAmount, type, date: formattedDate, category, paymentMethod: finalPaymentMethod, status: itemStatus });
         }
         setTransactions([...transactions, ...newTransactions]);
         for (let t of newTransactions) await setDoc(doc(db, 'artifacts', appId, 'public', 'data', `txns_${currentUser.id}`, t.id), t).catch(err => { if (err.code === 'permission-denied') setFirebasePermissionError(true); });
       } else {
-        const newTxn = { id: generateSafeId(), description, amount: numAmount, type, date, category, status: itemStatus };
+        const newTxn = { id: generateSafeId(), description, amount: numAmount, type, date, category, paymentMethod: finalPaymentMethod, status: itemStatus };
         setTransactions([...transactions, newTxn]);
         await setDoc(doc(db, 'artifacts', appId, 'public', 'data', `txns_${currentUser.id}`, newTxn.id), newTxn).catch(err => { if (err.code === 'permission-denied') setFirebasePermissionError(true); });
       }
@@ -648,7 +732,13 @@ export default function App() {
     resetForm(); setShowTransactionModal(false);
   };
 
-  const handleEdit = (t) => { setEditingId(t.id); setDescription(t.description); setAmount(t.amount); setType(t.type); setDate(t.date); setCategory(t.category); setIsPaid(t.status !== 'pending'); setIsInstallment(false); window.scrollTo({ top: 0, behavior: 'smooth' }); setShowTransactionModal(true); };
+  const handleEdit = (t) => { 
+    setEditingId(t.id); setDescription(t.description); setAmount(t.amount); 
+    setType(t.type); setDate(t.date); setCategory(t.category); 
+    setPaymentMethod(t.paymentMethod || 'Dinheiro');
+    setIsPaid(t.status !== 'pending'); setIsInstallment(false); 
+    window.scrollTo({ top: 0, behavior: 'smooth' }); setShowTransactionModal(true); 
+  };
   
   const handleDelete = async (id) => { 
     showConfirm('Apagar Registo', 'Deseja apagar este registo financeiro?', async () => {
@@ -680,6 +770,52 @@ export default function App() {
       return isSameMonth && matchesSearch;
     }).sort((a, b) => new Date(b.date) - new Date(a.date));
   }, [transactions, currentMonth, currentYear, searchTerm]);
+
+  // Agrupamento para a visão do Extrato (Cartões / Categorias acumuladas)
+  const groupedTransactions = useMemo(() => {
+    const groups = {};
+    filteredTransactions.forEach(t => {
+      // Prioriza a forma de pagamento (Cartão) se existir. Senão, agrupa pela Categoria.
+      let groupKey = t.category;
+      let isCardGroup = false;
+      
+      if (t.type === 'expense' && t.paymentMethod && t.paymentMethod !== 'Dinheiro') {
+        groupKey = t.paymentMethod;
+        isCardGroup = true;
+      } else if (cards.some(c => c.name === t.category || c.id === t.category)) {
+        // Fallback for old transactions
+        isCardGroup = true;
+      }
+      
+      if (!groups[groupKey]) {
+        groups[groupKey] = { transactions: [], realIncome: 0, realExpense: 0, estimatedIncome: 0, estimatedExpense: 0, isCard: isCardGroup };
+      }
+      groups[groupKey].transactions.push(t);
+      
+      const isPaid = t.status !== 'pending';
+      
+      if (t.type === 'income') {
+        groups[groupKey].estimatedIncome += t.amount;
+        if (isPaid) groups[groupKey].realIncome += t.amount;
+      } else {
+        groups[groupKey].estimatedExpense += t.amount;
+        if (isPaid) groups[groupKey].realExpense += t.amount; // includes expense and investment
+      }
+    });
+
+    return Object.entries(groups).map(([cat, data]) => {
+      const realNet = data.realIncome - data.realExpense;
+      const estimatedNet = data.estimatedIncome - data.estimatedExpense;
+      return {
+        category: cat,
+        transactions: data.transactions,
+        realNetTotal: realNet,
+        estimatedNetTotal: estimatedNet,
+        hasPending: realNet !== estimatedNet,
+        isCard: data.isCard
+      };
+    }).sort((a, b) => Math.abs(b.estimatedNetTotal) - Math.abs(a.estimatedNetTotal));
+  }, [filteredTransactions, cards]);
 
   const { income, expense, investment, realBalance } = useMemo(() => {
     return filteredTransactions.reduce((acc, curr) => {
@@ -788,6 +924,49 @@ export default function App() {
   const todayTip = useMemo(() => dailyTips[new Date().getDate() % dailyTips.length], []);
 
   // ----------------------------------------------------------------------
+  // COMPONENTE ITEM DE TRANSAÇÃO (REUTILIZÁVEL)
+  // ----------------------------------------------------------------------
+  const renderTransactionItem = (t, padClass = "p-5 sm:p-6 md:p-8") => {
+    const isPending = t.status === 'pending';
+    return (
+      <li key={t.id} className={`${padClass} flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-5 transition-all duration-200 ${isDarkMode ? 'hover:bg-[#2d144d]/50' : 'hover:bg-black/5'} ${editingId === t.id ? (isDarkMode ? 'bg-amber-900/20' : 'bg-amber-50/80') : ''} ${isPending ? 'opacity-80 border-l-4 border-l-amber-400' : 'border-l-4 border-l-transparent'}`}>
+        <div className="flex items-center gap-4 sm:gap-5 overflow-hidden w-full">
+          <button onClick={() => toggleStatus(t.id)} className={`p-2.5 sm:p-3 rounded-2xl shrink-0 transition-transform active:scale-90 shadow-sm border ${isPending ? (isDarkMode ? 'bg-[#1a0b2e] border-amber-500 text-amber-500 hover:bg-[#2d144d]' : 'bg-white border-amber-300 text-amber-500 hover:bg-amber-50') : (isDarkMode ? 'bg-[#1a0b2e] border-emerald-500 text-emerald-500 hover:bg-[#2d144d]' : 'bg-white border-emerald-300 text-emerald-600 hover:bg-emerald-50')}`} title={isPending ? "Confirmar Pagamento" : "Tornar Pendente"}>
+            {isPending ? <AlertCircle className="w-6 h-6 sm:w-7 sm:h-7" /> : <CheckCircle2 className="w-6 h-6 sm:w-7 sm:h-7" />}
+          </button>
+          
+          <div className="min-w-0 flex-1">
+            <p className={`font-black text-base sm:text-lg md:text-xl break-words tracking-tight leading-tight ${isPending ? (isDarkMode ? 'text-purple-300/70' : 'text-slate-500') : (isDarkMode ? 'text-white' : 'text-slate-900')}`}>{t.description}</p>
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1.5 sm:mt-2">
+              <span className={`px-2 py-1 rounded-lg uppercase tracking-widest text-[9px] sm:text-[10px] font-black border ${t.type === 'expense' ? (isDarkMode ? 'bg-rose-900/30 border-rose-800/50 text-rose-300' : 'bg-rose-50 border-rose-200 text-rose-700') : t.type === 'income' ? (isDarkMode ? 'bg-emerald-900/30 border-emerald-800/50 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-700') : (isDarkMode ? 'bg-indigo-900/30 border-indigo-800/50 text-indigo-300' : 'bg-indigo-50 border-indigo-200 text-indigo-700')}`}>{t.category}</span>
+              
+              {/* NOVO: Tag visual de Cartão, se for pago em cartão */}
+              {t.type === 'expense' && t.paymentMethod && t.paymentMethod !== 'Dinheiro' && (
+                <span className={`px-2 py-1 rounded-lg uppercase tracking-widest text-[9px] sm:text-[10px] font-black border flex items-center gap-1 ${isDarkMode ? 'bg-sky-900/30 border-sky-800/50 text-sky-300' : 'bg-sky-50 border-sky-200 text-sky-700'}`}>
+                  <CreditCard className="w-3 h-3" /> {t.paymentMethod}
+                </span>
+              )}
+
+              <span className={`text-[10px] sm:text-xs font-bold ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>{t.date.split('-').reverse().join('/')}</span>
+              {isPending && <span className={`text-[9px] sm:text-[10px] font-black px-2 py-1 rounded-lg border uppercase tracking-widest ${isDarkMode ? 'text-amber-400 bg-amber-900/30 border-amber-800/50' : 'text-amber-600 bg-amber-50 border-amber-200'}`}>Pendente</span>}
+            </div>
+          </div>
+        </div>
+        
+        <div className={`flex flex-row items-center justify-between sm:justify-end gap-3 sm:gap-5 w-full sm:w-auto mt-3 sm:mt-0 pt-3 sm:pt-0 sm:border-t-0 border-t ${isDarkMode ? 'border-[#321759]' : 'border-slate-200/50'}`}>
+          <span className={`font-black tracking-tight text-lg sm:text-xl md:text-2xl break-words max-w-[150px] sm:max-w-[200px] md:max-w-none text-right ${t.type === 'income' ? (isDarkMode ? 'text-emerald-400' : 'text-emerald-600') : t.type === 'expense' ? (isDarkMode ? 'text-rose-400' : 'text-rose-600') : (isDarkMode ? 'text-indigo-400' : 'text-indigo-600')} ${isPending ? 'opacity-60' : ''}`}>
+            {t.type === 'income' ? '+' : '-'} {formatCurrency(t.amount)}
+          </span>
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <button onClick={() => { handleEdit(t); setShowTransactionModal(true); }} className={`p-2.5 sm:p-3 rounded-xl transition-all shadow-sm active:scale-95 border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759] text-purple-300/70 hover:bg-amber-900/20 hover:text-amber-400 hover:border-amber-500/50' : 'bg-white border-slate-300 text-slate-500 hover:bg-amber-50 hover:text-amber-600 hover:border-amber-400'}`}><Edit className="w-4 h-4 sm:w-5 sm:h-5" /></button>
+            <button onClick={() => handleDelete(t.id)} className={`p-2.5 sm:p-3 rounded-xl transition-all shadow-sm active:scale-95 border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759] text-purple-300/70 hover:bg-rose-900/20 hover:text-rose-400 hover:border-rose-500/50' : 'bg-white border-slate-300 text-slate-500 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-400'}`}><Trash2 className="w-4 h-4 sm:w-5 sm:h-5" /></button>
+          </div>
+        </div>
+      </li>
+    );
+  };
+
+  // ----------------------------------------------------------------------
   // SISTEMA EXCEL E PDF
   // ----------------------------------------------------------------------
   const handleExportCSV = () => {
@@ -796,7 +975,7 @@ export default function App() {
     yearTransactions.forEach(t => monthKeysSet.add(t.date.substring(0, 7)));
     const monthKeys = Array.from(monthKeysSet).sort();
 
-    const activeCards = cards.filter(c => yearTransactions.some(t => t.type === 'expense' && (t.category === c.id || t.category === c.name)));
+    const activeCards = cards.filter(c => yearTransactions.some(t => t.type === 'expense' && (t.paymentMethod === c.id || t.paymentMethod === c.name || t.category === c.id || t.category === c.name)));
     
     let html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
     <head><meta charset="utf-8" />
@@ -807,7 +986,7 @@ export default function App() {
     activeCards.forEach(c => html += `<td class="hdr">${c.id}</td>`); html += `<td class="hdr">Total</td></tr><tr><td class="hdr">Sobra</td>`;
     let totalSobra = 0;
     activeCards.forEach(c => {
-      const used = yearTransactions.filter(t => t.type === 'expense' && (t.category === c.id || t.category === c.name)).reduce((sum, t) => sum + t.amount, 0);
+      const used = yearTransactions.filter(t => t.type === 'expense' && (t.paymentMethod === c.id || t.paymentMethod === c.name || t.category === c.id || t.category === c.name)).reduce((sum, t) => sum + t.amount, 0);
       const sobra = c.limit - used; totalSobra += sobra; html += `<td>${sobra.toFixed(2)}</td>`;
     });
     html += `<td>${totalSobra.toFixed(2)}</td></tr><tr><td class="hdr">Limite</td>`;
@@ -1012,7 +1191,7 @@ export default function App() {
         )}
         <style dangerouslySetInnerHTML={{__html: `@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');`}} />
         <div className={`min-h-screen flex items-center justify-center p-4 relative overflow-hidden ${isDarkMode ? 'bg-[#0b0410]' : 'bg-slate-50'}`} style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}>
-          <div className={`w-full max-w-md mx-4 relative z-10 p-8 md:p-12 rounded-[2.5rem] shadow-2xl transition-all duration-500 ${isDarkMode ? 'bg-[#1a0b2e] border border-[#321759] shadow-purple-900/20' : 'bg-white border border-slate-200 shadow-indigo-900/5'}`}>
+          <div className={`w-full max-w-md mx-4 relative z-10 p-8 md:p-12 rounded-[2.5rem] shadow-2xl transition-all duration-500 ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759] shadow-purple-900/20' : 'bg-white border-slate-200 shadow-indigo-900/5'}`}>
             <div className="flex justify-center mb-8">
               <div className={`w-32 h-32 rounded-[2rem] shadow-xl overflow-hidden shrink-0 flex items-center justify-center p-1 ${isDarkMode ? 'bg-[#2d144d] border-[#441f74] shadow-purple-900/20' : 'bg-white border-slate-100 shadow-indigo-600/10'} border-2 relative group`}>
                 <img src="/logo.jpg" alt="100 Aperto" className="w-full h-full object-cover scale-[1.05] rounded-[1.8rem] transition-transform duration-700 group-hover:scale-[1.12]" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
@@ -1279,9 +1458,15 @@ export default function App() {
                         <div className={`p-2 sm:p-2.5 rounded-xl shrink-0 ${isDarkMode ? 'bg-indigo-900/50' : 'bg-indigo-100'}`}><ListOrdered className={`w-5 h-5 sm:w-6 sm:h-6 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} /></div>
                         Extrato do Mês
                       </h2>
-                      <button onClick={() => setShowCardsModal(true)} className={`flex items-center justify-center w-full md:w-auto gap-2 px-5 py-3 rounded-xl text-sm font-black uppercase tracking-widest transition-all shadow-md active:scale-95 ${isDarkMode ? 'bg-[#2d144d] text-white hover:bg-[#3e1c66]' : 'bg-slate-900 text-white hover:bg-black'}`}>
-                        <CreditCard className="w-5 h-5" /> Cartões
-                      </button>
+                      <div className="flex flex-col sm:flex-row items-center w-full md:w-auto gap-3">
+                        <div className={`flex w-full sm:w-auto gap-1 p-1 rounded-2xl shadow-inner border ${isDarkMode ? 'bg-[#0b0410] border-[#321759]' : 'bg-slate-100 border-slate-200'}`}>
+                           <button onClick={() => setExtratoViewMode('chronological')} className={`flex-1 sm:flex-none px-4 py-2.5 text-[10px] sm:text-xs font-black uppercase tracking-widest rounded-xl transition-all ${extratoViewMode === 'chronological' ? (isDarkMode ? 'bg-[#2d144d] text-white shadow-md border border-[#441f74]' : 'bg-white text-indigo-600 shadow-md border border-slate-200') : (isDarkMode ? 'text-purple-300/70 hover:text-white' : 'text-slate-500 hover:text-slate-900')}`}>Cronológico</button>
+                           <button onClick={() => setExtratoViewMode('grouped')} className={`flex-1 sm:flex-none px-4 py-2.5 text-[10px] sm:text-xs font-black uppercase tracking-widest rounded-xl transition-all ${extratoViewMode === 'grouped' ? (isDarkMode ? 'bg-[#2d144d] text-white shadow-md border border-[#441f74]' : 'bg-white text-indigo-600 shadow-md border border-slate-200') : (isDarkMode ? 'text-purple-300/70 hover:text-white' : 'text-slate-500 hover:text-slate-900')}`}>Por Cartão</button>
+                        </div>
+                        <button onClick={() => setShowCardsModal(true)} className={`flex items-center justify-center w-full sm:w-auto gap-2 px-5 py-3 rounded-2xl text-sm font-black uppercase tracking-widest transition-all shadow-md active:scale-95 ${isDarkMode ? 'bg-[#2d144d] text-white hover:bg-[#3e1c66]' : 'bg-slate-900 text-white hover:bg-black'}`}>
+                          <CreditCard className="w-5 h-5" />
+                        </button>
+                      </div>
                     </div>
                     
                     <div className="p-0 max-h-[600px] overflow-y-auto">
@@ -1290,40 +1475,51 @@ export default function App() {
                           <div className={`w-24 h-24 rounded-[2rem] flex items-center justify-center mb-6 shadow-inner border ${isDarkMode ? 'bg-[#0b0410] border-[#1a0b2e]' : 'bg-slate-100 border-transparent'}`}><ListOrdered className={`w-12 h-12 ${isDarkMode ? 'text-purple-400/50' : 'text-slate-400'}`} /></div>
                           <p className={`font-black text-xl tracking-tight ${isDarkMode ? 'text-purple-200' : 'text-slate-600'}`}>{searchTerm ? 'Nenhum resultado encontrado.' : 'Tudo limpo por aqui.'}</p>
                         </div>
-                      ) : (
+                      ) : extratoViewMode === 'chronological' ? (
                         <ul className={`divide-y ${isDarkMode ? 'divide-[#321759]' : 'divide-slate-200/50'}`}>
-                          {filteredTransactions.map((t) => {
-                            const isPending = t.status === 'pending';
+                          {filteredTransactions.map((t) => renderTransactionItem(t, "p-5 sm:p-6 md:p-8"))}
+                        </ul>
+                      ) : (
+                        <div className={`p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-5 bg-opacity-30 ${isDarkMode ? 'bg-[#0b0410]' : 'bg-slate-50'}`}>
+                          {groupedTransactions.map((group) => {
+                            const isExpanded = expandedGroups[group.category];
                             return (
-                              <li key={t.id} className={`p-5 sm:p-6 md:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-5 transition-all duration-200 ${isDarkMode ? 'hover:bg-[#2d144d]/50' : 'hover:bg-black/5'} ${editingId === t.id ? (isDarkMode ? 'bg-amber-900/20' : 'bg-amber-50/80') : ''} ${isPending ? 'opacity-80 border-l-4 border-l-amber-400' : 'border-l-4 border-l-transparent'}`}>
-                                <div className="flex items-center gap-4 sm:gap-5 overflow-hidden w-full">
-                                  <button onClick={() => toggleStatus(t.id)} className={`p-2.5 sm:p-3 rounded-2xl shrink-0 transition-transform active:scale-90 shadow-sm border ${isPending ? (isDarkMode ? 'bg-[#1a0b2e] border-amber-500 text-amber-500 hover:bg-[#2d144d]' : 'bg-white border-amber-300 text-amber-500 hover:bg-amber-50') : (isDarkMode ? 'bg-[#1a0b2e] border-emerald-500 text-emerald-500 hover:bg-[#2d144d]' : 'bg-white border-emerald-300 text-emerald-600 hover:bg-emerald-50')}`} title={isPending ? "Confirmar Pagamento" : "Tornar Pendente"}>
-                                    {isPending ? <AlertCircle className="w-6 h-6 sm:w-7 sm:h-7" /> : <CheckCircle2 className="w-6 h-6 sm:w-7 sm:h-7" />}
-                                  </button>
-                                  
-                                  <div className="min-w-0 flex-1">
-                                    <p className={`font-black text-base sm:text-lg md:text-xl break-words tracking-tight leading-tight ${isPending ? (isDarkMode ? 'text-purple-300/70' : 'text-slate-500') : (isDarkMode ? 'text-white' : 'text-slate-900')}`}>{t.description}</p>
-                                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1.5 sm:mt-2">
-                                      <span className={`px-2 py-1 rounded-lg uppercase tracking-widest text-[9px] sm:text-[10px] font-black border ${t.type === 'expense' ? (isDarkMode ? 'bg-rose-900/30 border-rose-800/50 text-rose-300' : 'bg-rose-50 border-rose-200 text-rose-700') : t.type === 'income' ? (isDarkMode ? 'bg-emerald-900/30 border-emerald-800/50 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-700') : (isDarkMode ? 'bg-indigo-900/30 border-indigo-800/50 text-indigo-300' : 'bg-indigo-50 border-indigo-200 text-indigo-700')}`}>{t.category}</span>
-                                      <span className={`text-[10px] sm:text-xs font-bold ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>{t.date.split('-').reverse().join('/')}</span>
-                                      {isPending && <span className={`text-[9px] sm:text-[10px] font-black px-2 py-1 rounded-lg border uppercase tracking-widest ${isDarkMode ? 'text-amber-400 bg-amber-900/30 border-amber-800/50' : 'text-amber-600 bg-amber-50 border-amber-200'}`}>Pendente</span>}
+                              <div key={group.category} className={`rounded-[1.5rem] border overflow-hidden shadow-sm transition-all duration-300 ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759]' : 'bg-white border-slate-200'} ${isExpanded ? 'ring-2 ring-indigo-500/20' : ''}`}>
+                                <div onClick={() => toggleGroup(group.category)} className={`p-5 sm:p-6 flex justify-between items-center cursor-pointer transition-colors ${isDarkMode ? 'hover:bg-[#2d144d]/50' : 'hover:bg-slate-50'}`}>
+                                  <div className="flex items-center gap-4 sm:gap-5">
+                                    <div className={`p-3 sm:p-3.5 rounded-2xl shadow-sm ${group.isCard ? (isDarkMode ? 'bg-indigo-900/40 text-indigo-400' : 'bg-indigo-100 text-indigo-600') : (group.realNetTotal >= 0 ? (isDarkMode ? 'bg-emerald-900/40 text-emerald-400' : 'bg-emerald-100 text-emerald-600') : (isDarkMode ? 'bg-rose-900/40 text-rose-400' : 'bg-rose-100 text-rose-600'))}`}>
+                                      {group.isCard ? <CreditCard className="w-6 h-6" /> : (group.realNetTotal >= 0 ? <TrendingUp className="w-6 h-6" /> : <ListOrdered className="w-6 h-6" />)}
+                                    </div>
+                                    <div className="flex flex-col">
+                                      <span className={`font-black text-lg sm:text-xl tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{group.category}</span>
+                                      <span className={`text-[10px] sm:text-xs font-bold uppercase tracking-widest mt-0.5 ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>{group.transactions.length} Registo{group.transactions.length > 1 ? 's' : ''}</span>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-3 sm:gap-5">
+                                    <div className="flex flex-col items-end justify-center">
+                                      <span className={`font-black text-xl sm:text-2xl tracking-tight text-right ${group.realNetTotal < 0 ? (isDarkMode ? 'text-rose-400' : 'text-rose-600') : (isDarkMode ? 'text-emerald-400' : 'text-emerald-600')}`}>
+                                        {group.realNetTotal < 0 ? '-' : '+'} {formatCurrency(Math.abs(group.realNetTotal))}
+                                      </span>
+                                      {group.hasPending && (
+                                        <span className={`text-[10px] font-bold uppercase tracking-widest mt-0.5 ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>
+                                          Previsto: {group.estimatedNetTotal < 0 ? '-' : '+'} {formatCurrency(Math.abs(group.estimatedNetTotal))}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className={`p-1.5 rounded-xl transition-colors ${isExpanded ? (isDarkMode ? 'bg-[#321759]' : 'bg-slate-200') : 'bg-transparent'}`}>
+                                      <ChevronDown className={`w-5 h-5 sm:w-6 sm:h-6 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''} ${isDarkMode ? 'text-purple-400' : 'text-slate-400'}`} />
                                     </div>
                                   </div>
                                 </div>
-                                
-                                <div className={`flex flex-row items-center justify-between sm:justify-end gap-3 sm:gap-5 w-full sm:w-auto mt-3 sm:mt-0 pt-3 sm:pt-0 sm:border-t-0 border-t ${isDarkMode ? 'border-[#321759]' : 'border-slate-200/50'}`}>
-                                  <span className={`font-black tracking-tight text-lg sm:text-xl md:text-2xl break-words max-w-[150px] sm:max-w-[200px] md:max-w-none text-right ${t.type === 'income' ? (isDarkMode ? 'text-emerald-400' : 'text-emerald-600') : t.type === 'expense' ? (isDarkMode ? 'text-rose-400' : 'text-rose-600') : (isDarkMode ? 'text-indigo-400' : 'text-indigo-600')} ${isPending ? 'opacity-60' : ''}`}>
-                                    {t.type === 'income' ? '+' : '-'} {formatCurrency(t.amount)}
-                                  </span>
-                                  <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                                    <button onClick={() => { handleEdit(t); setShowTransactionModal(true); }} className={`p-2.5 sm:p-3 rounded-xl transition-all shadow-sm active:scale-95 border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759] text-purple-300/70 hover:bg-amber-900/20 hover:text-amber-400 hover:border-amber-500/50' : 'bg-white border-slate-300 text-slate-500 hover:bg-amber-50 hover:text-amber-600 hover:border-amber-400'}`}><Edit className="w-4 h-4 sm:w-5 sm:h-5" /></button>
-                                    <button onClick={() => handleDelete(t.id)} className={`p-2.5 sm:p-3 rounded-xl transition-all shadow-sm active:scale-95 border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759] text-purple-300/70 hover:bg-rose-900/20 hover:text-rose-400 hover:border-rose-500/50' : 'bg-white border-slate-300 text-slate-500 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-400'}`}><Trash2 className="w-4 h-4 sm:w-5 sm:h-5" /></button>
-                                  </div>
-                                </div>
-                              </li>
+                                {isExpanded && (
+                                  <ul className={`divide-y border-t ${isDarkMode ? 'divide-[#321759] border-[#321759] bg-[#0b0410]/50' : 'divide-slate-200/50 border-slate-200 bg-slate-50/50'}`}>
+                                    {group.transactions.map((t) => renderTransactionItem(t, "p-4 sm:p-5 md:p-6"))}
+                                  </ul>
+                                )}
+                              </div>
                             );
                           })}
-                        </ul>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -1516,7 +1712,7 @@ export default function App() {
         </main>
 
         {/* ---------------------------------------------------------------------- */}
-        {/* FAB MENU & MODALS CENTRALIZADOS USANDO BASEMODAL                       */}
+        {/* FAB MENU E MODAIS */}
         {/* ---------------------------------------------------------------------- */}
         
         {/* FAB MENU BACKDROP E OPÇÕES */}
@@ -1593,9 +1789,11 @@ export default function App() {
         <BaseModal isOpen={showTransactionModal} onClose={() => { resetForm(); setShowTransactionModal(false); }} title={editingId ? 'Editar Registo' : (isQuickAdd ? 'Adição Rápida' : 'Novo Registo')} icon={editingId ? Edit : Plus} iconBg={editingId ? (isDarkMode ? 'bg-amber-900/30' : 'bg-amber-100') : (isDarkMode ? 'bg-indigo-900/30' : 'bg-indigo-100')} iconColor={editingId ? (isDarkMode ? 'text-amber-400' : 'text-amber-600') : (isDarkMode ? 'text-indigo-400' : 'text-indigo-600')} isDarkMode={isDarkMode} isBottomMobile={true} padClass="p-5 sm:p-6">
           <form onSubmit={handleSaveTransaction} className="space-y-5 sm:space-y-6">
             {isQuickAdd && (
-              <div className={`p-4 rounded-2xl flex items-center justify-center gap-2 mb-2 border shadow-sm ${isDarkMode ? 'bg-indigo-900/20 border-indigo-500/30' : 'bg-indigo-50 border-indigo-200'}`}>
-                <CreditCard className={`w-5 h-5 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} />
-                <span className={`text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-indigo-300' : 'text-indigo-700'}`}>Gasto no Cartão {category}</span>
+              <div className={`p-4 rounded-2xl flex items-center justify-between gap-2 mb-2 border shadow-sm ${isDarkMode ? 'bg-indigo-900/20 border-indigo-500/30' : 'bg-indigo-50 border-indigo-200'}`}>
+                <div className="flex items-center gap-2">
+                  <CreditCard className={`w-5 h-5 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} />
+                  <span className={`text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-indigo-300' : 'text-indigo-700'}`}>Gasto no Cartão {paymentMethod}</span>
+                </div>
               </div>
             )}
 
@@ -1630,20 +1828,37 @@ export default function App() {
               <input type="text" required value={description} onChange={(e) => handleDescriptionChange(e.target.value)} className={`w-full px-4 sm:px-5 py-3 sm:py-4 rounded-2xl outline-none focus:ring-4 transition-all font-bold text-sm sm:text-base border ${isDarkMode ? 'bg-[#0b0410] border-[#321759] text-white placeholder-purple-300/30 focus:border-indigo-500 focus:ring-indigo-500/10' : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:ring-indigo-500/10 shadow-sm'}`} placeholder="Ex: Ifood, Gasolina..." />
             </div>
 
-            {!isQuickAdd && (
-              <div>
-                <label className={formStyles.label(isDarkMode)}>Categoria / Cartão</label>
-                <div className="flex gap-2 sm:gap-3">
+            {/* SELETORES: MEIO DE PAGAMENTO E CATEGORIA */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+              {!isQuickAdd && type === 'expense' && (
+                <div>
+                  <label className={formStyles.label(isDarkMode)}>Meio de Pagamento</label>
                   <div className="relative w-full">
-                    <select value={category} onChange={(e) => setCategory(e.target.value)} className={`w-full px-4 sm:px-5 py-3 sm:py-4 rounded-2xl outline-none focus:ring-4 transition-all font-bold appearance-none text-sm sm:text-base border ${isDarkMode ? 'bg-[#0b0410] border-[#321759] text-white focus:border-indigo-500 focus:ring-indigo-500/10' : 'bg-white border-slate-300 text-slate-900 focus:border-indigo-500 focus:ring-indigo-500/10 shadow-sm'}`}>
-                      {categories[type] && categories[type].map((cat, idx) => <option key={idx} value={cat}>{cat}</option>)}
+                    <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className={`w-full px-4 sm:px-5 py-3 sm:py-4 rounded-2xl outline-none focus:ring-4 transition-all font-bold appearance-none text-sm sm:text-base border ${isDarkMode ? 'bg-[#0b0410] border-[#321759] text-white focus:border-indigo-500 focus:ring-indigo-500/10' : 'bg-white border-slate-300 text-slate-900 focus:border-indigo-500 focus:ring-indigo-500/10 shadow-sm'}`}>
+                      <option value="Dinheiro">Conta Principal / Dinheiro</option>
+                      {cards.map(c => <option key={c.id} value={c.id}>Cartão {c.name}</option>)}
                     </select>
                     <div className="absolute inset-y-0 right-4 sm:right-5 flex items-center pointer-events-none"><ChevronDown className={`w-4 h-4 sm:w-5 sm:h-5 ${isDarkMode ? 'text-purple-300/70' : 'text-slate-400'}`}/></div>
                   </div>
-                  <button type="button" onClick={handleAddCategory} className={`px-4 sm:px-5 py-3 sm:py-4 rounded-2xl transition-colors shadow-md active:scale-95 flex items-center justify-center shrink-0 ${isDarkMode ? 'bg-indigo-600 hover:bg-indigo-500 text-white' : 'bg-slate-900 hover:bg-black text-white'}`} title="Criar Nova Categoria"><Plus className="w-4 h-4 sm:w-5 sm:h-5" /></button>
+                </div>
+              )}
+              <div className={!isQuickAdd && type === 'expense' ? '' : 'col-span-1 sm:col-span-2'}>
+                <label className={formStyles.label(isDarkMode)}>Categoria do Gasto</label>
+                <div className="flex gap-2 sm:gap-3">
+                  <div className="relative w-full">
+                    <select value={category} onChange={(e) => setCategory(e.target.value)} className={`w-full px-4 sm:px-5 py-3 sm:py-4 rounded-2xl outline-none focus:ring-4 transition-all font-bold appearance-none text-sm sm:text-base border ${isDarkMode ? 'bg-[#0b0410] border-[#321759] text-white focus:border-indigo-500 focus:ring-indigo-500/10' : 'bg-white border-slate-300 text-slate-900 focus:border-indigo-500 focus:ring-indigo-500/10 shadow-sm'}`}>
+                      {categories[type] && categories[type]
+                        .filter(cat => type !== 'expense' || !cards.some(c => c.id === cat || c.name === cat)) // Oculta nomes de cartões da lista de categorias visuais
+                        .map((cat, idx) => <option key={idx} value={cat}>{cat}</option>)}
+                    </select>
+                    <div className="absolute inset-y-0 right-4 sm:right-5 flex items-center pointer-events-none"><ChevronDown className={`w-4 h-4 sm:w-5 sm:h-5 ${isDarkMode ? 'text-purple-300/70' : 'text-slate-400'}`}/></div>
+                  </div>
+                  {!isQuickAdd && (
+                    <button type="button" onClick={handleAddCategory} className={`px-4 sm:px-5 py-3 sm:py-4 rounded-2xl transition-colors shadow-md active:scale-95 flex items-center justify-center shrink-0 ${isDarkMode ? 'bg-indigo-600 hover:bg-indigo-500 text-white' : 'bg-slate-900 hover:bg-black text-white'}`} title="Criar Nova Categoria"><Plus className="w-4 h-4 sm:w-5 sm:h-5" /></button>
+                  )}
                 </div>
               </div>
-            )}
+            </div>
             
             {!isQuickAdd && (
               <div className={`flex items-center gap-3 sm:gap-4 p-4 sm:p-5 rounded-2xl border shadow-sm cursor-pointer transition-colors group ${isDarkMode ? 'bg-[#0b0410]/50 border-[#321759] hover:border-indigo-500/50' : 'bg-slate-50 border-slate-200/50 hover:border-indigo-300'}`} onClick={() => setIsPaid(!isPaid)}>
@@ -1733,7 +1948,7 @@ export default function App() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {cards.map(card => {
-                const cardExpenses = filteredTransactions.filter(t => t.type === 'expense' && (t.category === card.id || t.category === card.name)).reduce((acc, curr) => acc + curr.amount, 0);
+                const cardExpenses = filteredTransactions.filter(t => t.type === 'expense' && (t.paymentMethod === card.id || t.paymentMethod === card.name || (!t.paymentMethod && (t.category === card.id || t.category === card.name)))).reduce((acc, curr) => acc + curr.amount, 0);
                 const availableLimit = Math.max(card.limit - cardExpenses, 0);
                 const usagePercentage = card.limit > 0 ? Math.min((cardExpenses / card.limit) * 100, 100) : 100;
                 return (
