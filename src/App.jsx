@@ -194,6 +194,8 @@ export default function App() {
   const [installmentType, setInstallmentType] = useState('parcela');
   const [isPaid, setIsPaid] = useState(true);
   const [isQuickAdd, setIsQuickAdd] = useState(false);
+  const [frequentItems, setFrequentItems] = useState([]);
+  const [saveAsFrequent, setSaveAsFrequent] = useState(false);
 
   // Simulador de Investimentos (Agora com gravação na memória)
   const [simInitial, setSimInitial] = useState(() => {
@@ -317,6 +319,8 @@ export default function App() {
     if (localGoals) setGoals(JSON.parse(localGoals));
     const localBudgets = localStorage.getItem(`finances_budgets_${userId}`);
     if (localBudgets) setBudgets(JSON.parse(localBudgets));
+    const localFreq = localStorage.getItem(`finances_frequent_${userId}`);
+    if (localFreq) setFrequentItems(JSON.parse(localFreq));
     
     // Filtro Automático para Limpar nomes de Cartões antigos que ficaram na cache
     const localCats = localStorage.getItem(`finances_categories_${userId}`);
@@ -386,6 +390,7 @@ export default function App() {
             if (data.cards) { setCards(data.cards); localStorage.setItem(`finances_cards_${userId}`, JSON.stringify(data.cards)); }
             if (data.goals) { setGoals(data.goals); localStorage.setItem(`finances_goals_${userId}`, JSON.stringify(data.goals)); }
             if (data.budgets) { setBudgets(data.budgets); localStorage.setItem(`finances_budgets_${userId}`, JSON.stringify(data.budgets)); }
+            if (data.frequentItems) { setFrequentItems(data.frequentItems); localStorage.setItem(`finances_frequent_${userId}`, JSON.stringify(data.frequentItems)); }
             if (data.userSettings) setUserSettings(data.userSettings);
           } else if (!localCats) {
             setCategories(defaultCategories); setCards(defaultCards); setGoals([]); setBudgets({});
@@ -687,9 +692,31 @@ export default function App() {
   const resetForm = () => { 
     setEditingId(null); setDescription(''); setAmount(''); setIsInstallment(false); 
     setInstallmentsCount(2); setInstallmentType('parcela'); setIsPaid(true); 
-    setIsQuickAdd(false); setPaymentMethod('Dinheiro');
+    setIsQuickAdd(false); setPaymentMethod('Dinheiro'); setSaveAsFrequent(false);
   };
   
+  const handleSelectFrequentItem = (item) => {
+    // 1. Acumula o valor com o que já estiver digitado
+    setAmount(prev => {
+      const current = parseFloat((prev || '0').toString().replace(',', '.')) || 0;
+      // Retornamos com ponto para que o input type="number" aceite o valor corretamente
+      return (current + item.amount).toFixed(2);
+    });
+    
+    // 2. Mantém o nome do primeiro item clicado (padrão)
+    setDescription(prev => {
+      if (!prev) return item.name;
+      return prev;
+    });
+    
+    // 3. Define a categoria baseada apenas no primeiro item
+    if (!description) {
+      if (categories.expense.includes(item.category) || categories.income.includes(item.category) || categories.investment.includes(item.category)) {
+        setCategory(item.category);
+      }
+    }
+  };
+
   const handleQuickAddCard = (cardId) => {
     resetForm(); 
     setType('expense'); 
@@ -734,6 +761,26 @@ export default function App() {
         const newTxn = { id: generateSafeId(), description, amount: numAmount, type, date, category, paymentMethod: finalPaymentMethod, status: itemStatus };
         setTransactions([...transactions, newTxn]);
         await setDoc(doc(db, 'artifacts', appId, 'public', 'data', `txns_${currentUser.id}`, newTxn.id), newTxn).catch(err => { if (err.code === 'permission-denied') setFirebasePermissionError(true); });
+      }
+      
+      // Lógica de Itens Frequentes
+      if (saveAsFrequent) {
+        const existing = frequentItems.find(f => f.name.toLowerCase() === description.toLowerCase());
+        let newFreqs;
+        if (existing) {
+          newFreqs = frequentItems.map(f => f.id === existing.id ? { ...f, count: f.count + 1, amount: numAmount, category } : f);
+        } else {
+          newFreqs = [...frequentItems, { id: generateSafeId(), name: description, amount: numAmount, category, count: 1 }];
+        }
+        setFrequentItems(newFreqs);
+        saveCloudConfig({ frequentItems: newFreqs });
+      } else {
+        const existing = frequentItems.find(f => f.name.toLowerCase() === description.toLowerCase());
+        if (existing) {
+          const newFreqs = frequentItems.map(f => f.id === existing.id ? { ...f, count: f.count + 1 } : f);
+          setFrequentItems(newFreqs);
+          saveCloudConfig({ frequentItems: newFreqs });
+        }
       }
     }
     resetForm(); setShowTransactionModal(false);
@@ -785,8 +832,12 @@ export default function App() {
       // Prioriza a forma de pagamento (Cartão) se existir. Senão, agrupa pela Categoria.
       let groupKey = t.category;
       let isCardGroup = false;
+      let isIncomeGroup = false;
       
-      if (t.type === 'expense' && t.paymentMethod && t.paymentMethod !== 'Dinheiro') {
+      if (t.type === 'income') {
+        groupKey = 'Entradas';
+        isIncomeGroup = true;
+      } else if (t.type === 'expense' && t.paymentMethod && t.paymentMethod !== 'Dinheiro') {
         groupKey = t.paymentMethod;
         isCardGroup = true;
       } else if (cards.some(c => c.name === t.category || c.id === t.category)) {
@@ -795,7 +846,7 @@ export default function App() {
       }
       
       if (!groups[groupKey]) {
-        groups[groupKey] = { transactions: [], realIncome: 0, realExpense: 0, estimatedIncome: 0, estimatedExpense: 0, isCard: isCardGroup };
+        groups[groupKey] = { transactions: [], realIncome: 0, realExpense: 0, estimatedIncome: 0, estimatedExpense: 0, isCard: isCardGroup, isIncome: isIncomeGroup };
       }
       groups[groupKey].transactions.push(t);
       
@@ -810,18 +861,40 @@ export default function App() {
       }
     });
 
-    return Object.entries(groups).map(([cat, data]) => {
+    const result = Object.entries(groups).map(([cat, data]) => {
       const realNet = data.realIncome - data.realExpense;
       const estimatedNet = data.estimatedIncome - data.estimatedExpense;
+
+      // Se for o grupo de Entradas, garante que o Salário vem sempre em primeiro
+      if (data.isIncome) {
+        data.transactions.sort((a, b) => {
+          const aIsSalario = a.category.toLowerCase() === 'salário' || a.category.toLowerCase() === 'salario';
+          const bIsSalario = b.category.toLowerCase() === 'salário' || b.category.toLowerCase() === 'salario';
+          if (aIsSalario && !bIsSalario) return -1;
+          if (!aIsSalario && bIsSalario) return 1;
+          return new Date(b.date) - new Date(a.date);
+        });
+      }
+
       return {
         category: cat,
         transactions: data.transactions,
         realNetTotal: realNet,
         estimatedNetTotal: estimatedNet,
         hasPending: realNet !== estimatedNet,
-        isCard: data.isCard
+        isCard: data.isCard,
+        isIncome: data.isIncome
       };
-    }).sort((a, b) => Math.abs(b.estimatedNetTotal) - Math.abs(a.estimatedNetTotal));
+    });
+
+    // Ordena os grupos: Entradas sempre no topo absoluto, depois o resto por valor acumulado
+    result.sort((a, b) => {
+      if (a.isIncome && !b.isIncome) return -1;
+      if (!a.isIncome && b.isIncome) return 1;
+      return Math.abs(b.estimatedNetTotal) - Math.abs(a.estimatedNetTotal);
+    });
+
+    return result;
   }, [filteredTransactions, cards]);
 
   const { income, expense, investment, realBalance } = useMemo(() => {
@@ -1795,6 +1868,25 @@ export default function App() {
         {/* MODAL: TRANSAÇÕES (POSIÇÃO INFERIOR EM MOBILE) */}
         <BaseModal isOpen={showTransactionModal} onClose={() => { resetForm(); setShowTransactionModal(false); }} title={editingId ? 'Editar Registo' : (isQuickAdd ? 'Adição Rápida' : 'Novo Registo')} icon={editingId ? Edit : Plus} iconBg={editingId ? (isDarkMode ? 'bg-amber-900/30' : 'bg-amber-100') : (isDarkMode ? 'bg-indigo-900/30' : 'bg-indigo-100')} iconColor={editingId ? (isDarkMode ? 'text-amber-400' : 'text-amber-600') : (isDarkMode ? 'text-indigo-400' : 'text-indigo-600')} isDarkMode={isDarkMode} isBottomMobile={true} padClass="p-5 sm:p-6">
           <form onSubmit={handleSaveTransaction} className="space-y-5 sm:space-y-6">
+            {!editingId && frequentItems.length > 0 && (
+              <div className="mb-2">
+                <label className={formStyles.label(isDarkMode) + " mb-3"}>⭐ Mais Comprados</label>
+                <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
+                  {frequentItems.sort((a,b) => b.count - a.count).slice(0, 10).map(item => (
+                    <button 
+                      key={item.id} 
+                      type="button"
+                      onClick={() => handleSelectFrequentItem(item)}
+                      className={`shrink-0 px-4 py-2.5 rounded-xl text-left shadow-sm transition-all active:scale-95 border flex flex-col gap-0.5 ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759] text-white hover:border-indigo-500' : 'bg-white border-slate-200 text-slate-700 hover:border-indigo-400'}`}
+                    >
+                      <span className="text-xs font-black truncate max-w-[120px]">{item.name}</span>
+                      <span className={`text-[10px] font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>{formatCurrency(item.amount)}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {isQuickAdd && (
               <div className={`p-4 rounded-2xl flex items-center justify-between gap-2 mb-2 border shadow-sm ${isDarkMode ? 'bg-indigo-900/20 border-indigo-500/30' : 'bg-indigo-50 border-indigo-200'}`}>
                 <div className="flex items-center gap-2">
@@ -1833,6 +1925,35 @@ export default function App() {
                 </button>
               </label>
               <input type="text" required value={description} onChange={(e) => handleDescriptionChange(e.target.value)} className={`w-full px-4 sm:px-5 py-3 sm:py-4 rounded-2xl outline-none focus:ring-4 transition-all font-bold text-sm sm:text-base border ${isDarkMode ? 'bg-[#0b0410] border-[#321759] text-white placeholder-purple-300/30 focus:border-indigo-500 focus:ring-indigo-500/10' : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:ring-indigo-500/10 shadow-sm'}`} placeholder="Ex: Ifood, Gasolina..." />
+              
+              {description && frequentItems.filter(f => f.name.toLowerCase().includes(description.toLowerCase()) && f.name.toLowerCase() !== description.toLowerCase()).length > 0 && (
+                <div className={`mt-2 rounded-xl shadow-sm border overflow-hidden animate-in fade-in ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759]' : 'bg-white border-slate-200'}`}>
+                  {frequentItems.filter(f => f.name.toLowerCase().includes(description.toLowerCase()) && f.name.toLowerCase() !== description.toLowerCase()).slice(0, 3).map(f => (
+                    <div key={f.id} className={`flex justify-between items-center border-b last:border-0 ${isDarkMode ? 'border-[#321759]' : 'border-slate-100'}`}>
+                      <button 
+                        type="button" 
+                        onClick={() => handleSelectFrequentItem(f)}
+                        className={`flex-1 text-left px-4 py-3 text-xs sm:text-sm font-bold transition-colors ${isDarkMode ? 'hover:bg-[#2d144d] text-white' : 'hover:bg-slate-50 text-slate-700'}`}
+                      >
+                        {f.name} <span className={`ml-2 text-[10px] sm:text-xs ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>{formatCurrency(f.amount)}</span>
+                      </button>
+                      <button type="button" onClick={() => {
+                        const newFreqs = frequentItems.filter(item => item.id !== f.id);
+                        setFrequentItems(newFreqs); saveCloudConfig({ frequentItems: newFreqs });
+                      }} className={`p-3 transition-colors ${isDarkMode ? 'text-rose-400 hover:bg-rose-900/30' : 'text-rose-500 hover:bg-rose-50'}`} title="Remover dos frequentes">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {!editingId && !frequentItems.some(f => f.name.toLowerCase() === description.toLowerCase()) && description.length > 2 && (
+                <label className="flex items-center gap-3 cursor-pointer mt-3">
+                  <input type="checkbox" checked={saveAsFrequent} onChange={(e) => setSaveAsFrequent(e.target.checked)} className={`w-4 h-4 sm:w-5 sm:h-5 rounded-md focus:ring-indigo-500 border-slate-300 ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759] text-indigo-500' : 'text-indigo-600'}`} />
+                  <span className={`text-xs sm:text-sm font-black ${isDarkMode ? 'text-purple-200' : 'text-slate-800'}`}>Salvar nos Itens Frequentes ⭐</span>
+                </label>
+              )}
             </div>
 
             {/* SELETORES: MEIO DE PAGAMENTO E CATEGORIA */}
