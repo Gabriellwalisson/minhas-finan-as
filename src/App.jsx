@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Plus, ArrowUpCircle, ArrowDownCircle, TrendingUp, Trash2, Edit,
   Wallet, Calendar, ChevronLeft, ChevronRight, PieChart, Lock, LogOut,
@@ -18,7 +18,7 @@ import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, deleteDoc } 
 // ----------------------------------------------------------------------
 // CONFIGURAÇÃO DO FIREBASE (NUVEM) E UTILITÁRIOS
 // ----------------------------------------------------------------------
-const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { 
+const firebaseConfig = { 
   apiKey: "AIzaSyD3NXIcLLJDOGbfBt0nUOteuhnEcPOJzhw",
   authDomain: "financasbirowjoe.firebaseapp.com",
   projectId: "financasbirowjoe",
@@ -117,7 +117,7 @@ const BaseModal = ({ isOpen, onClose, title, icon: Icon, iconBg, iconColor, isDa
 const defaultCategories = {
   income: ['Salário', 'Acerto', 'Rendimento', 'Cashback', 'Vendas', 'Outros'],
   expense: ['Alimentação', 'Supermercado', 'Transporte', 'Contas Fixas', 'Moradia', 'Lazer', 'Saúde', 'Educação', 'Vestuário', 'Pets', 'Outros'],
-  investment: ['Reserva de Emergência', 'Ações', 'Fundos Imobiliários', 'CDB/Tesouro', 'Cripto', 'Sobra de Mês']
+  investment: ['Reserva de Emergência', 'Ações', 'Fundos Imobiliários', 'CDB/Tesouro', 'Cripto']
 };
 
 const defaultCards = [
@@ -281,139 +281,6 @@ export default function App() {
   const showPrompt = (title, message, onConfirm) => setUiModal({ type: 'prompt', title, message, onConfirm, inputValue: '' });
   const closeUiModal = () => setUiModal({ type: null, title: '', message: '', onConfirm: null, inputValue: '' });
 
-  // ----------------------------------------------------------------------
-  // INTERCEPTADOR DO BOTÃO VOLTAR (BACK BUTTON)
-  // ----------------------------------------------------------------------
-  const isAnyModalOpen = showTransactionModal || showFabMenu || showGoalModal || 
-    showBudgetModal || showAiModal || isPlanningGoal || showAiBudgetModal || 
-    showPurchaseModal || showChartModal || showSyncModal || showCalculator || 
-    showCardsModal || showSettingsModal || (uiModal.type !== null);
-
-  const modalStateRef = useRef(isAnyModalOpen);
-
-  useEffect(() => {
-    modalStateRef.current = isAnyModalOpen;
-  }, [isAnyModalOpen]);
-
-  useEffect(() => {
-    // Empurra um estado inicial para o histórico assim que o app carrega
-    window.history.pushState({ page: 'app' }, '');
-
-    const handleBackButton = () => {
-      if (modalStateRef.current) {
-        // Se houver algum modal aberto, recria o estado no histórico para impedir a saída
-        window.history.pushState({ page: 'app' }, '');
-        
-        // Fecha todos os modais e menus abertos
-        setShowTransactionModal(false);
-        setShowFabMenu(false);
-        setShowGoalModal(false);
-        setShowBudgetModal(false);
-        setShowAiModal(false);
-        setIsPlanningGoal(false);
-        setShowAiBudgetModal(false);
-        setShowPurchaseModal(false);
-        setShowChartModal(false);
-        setShowSyncModal(false);
-        setShowCalculator(false);
-        setShowCardsModal(false);
-        setShowSettingsModal(false);
-        closeUiModal();
-      }
-    };
-
-    window.addEventListener('popstate', handleBackButton);
-    return () => window.removeEventListener('popstate', handleBackButton);
-  }, []);
-
-  // ----------------------------------------------------------------------
-  // INVESTIMENTO AUTOMÁTICO DA SOBRA (Baseado no Calendário Real)
-  // ----------------------------------------------------------------------
-  useEffect(() => {
-    if (!isDataLoaded || !firebaseReady || !currentUser) return;
-
-    const processAutomaticSobra = async () => {
-      const today = new Date();
-      const currentY = today.getFullYear();
-      const currentM = today.getMonth();
-      
-      // Chave única para o usuário, ano e mês atuais
-      const checkKey = `finances_sobra_processed_${currentUser.id}_${currentY}_${currentM}`;
-      if (localStorage.getItem(checkKey)) return; // Já processou o rollover deste mês neste dispositivo
-
-      if (transactions.length === 0) return;
-
-      const prevM = currentM === 0 ? 11 : currentM - 1;
-      const prevY = currentM === 0 ? currentY - 1 : currentY;
-
-      // Verifica se a sobra já foi registrada no mês anterior para evitar duplicados
-      const hasSobraLastMonth = transactions.some(t => {
-        const [y, m] = t.date.split('-');
-        return parseInt(y) === prevY && parseInt(m) === prevM + 1 && t.category === 'Sobra de Mês';
-      });
-
-      if (hasSobraLastMonth) {
-        localStorage.setItem(checkKey, 'true');
-        return;
-      }
-
-      const previousMonthTxns = transactions.filter(t => {
-        const [year, month] = t.date.split('-');
-        return parseInt(year) === prevY && parseInt(month) === prevM + 1;
-      });
-
-      if (previousMonthTxns.length === 0) {
-        localStorage.setItem(checkKey, 'true');
-        return;
-      }
-
-      let prevIncome = 0;
-      let prevExpense = 0;
-      let prevInvestment = 0;
-
-      previousMonthTxns.forEach(curr => {
-        if (curr.type === 'income') prevIncome += curr.amount;
-        if (curr.type === 'expense') prevExpense += curr.amount;
-        if (curr.type === 'investment') prevInvestment += curr.amount;
-      });
-
-      const previousExpectedBalance = prevIncome - prevExpense - prevInvestment;
-
-      // Se sobrou dinheiro, cria a transação de investimento no ÚLTIMO DIA DO MÊS ANTERIOR
-      // Isso impede que o novo mês comece negativo
-      if (previousExpectedBalance > 0) {
-        const lastDayOfPrevMonth = new Date(prevY, prevM + 1, 0).getDate();
-        const formattedDate = `${prevY}-${String(prevM + 1).padStart(2, '0')}-${String(lastDayOfPrevMonth).padStart(2, '0')}`;
-
-        const newTxn = { 
-          id: generateSafeId(), 
-          description: 'Sobra Investida (Automático)', 
-          amount: previousExpectedBalance, 
-          type: 'investment', 
-          date: formattedDate, 
-          category: 'Sobra de Mês', 
-          paymentMethod: 'Dinheiro', 
-          status: 'paid' 
-        };
-        
-        setTransactions(prev => [...prev, newTxn]);
-        try {
-          await setDoc(doc(db, 'artifacts', appId, 'public', 'data', `txns_${currentUser.id}`, newTxn.id), newTxn);
-          showAlert("Sobra Investida! 💰", `O valor de ${formatCurrency(previousExpectedBalance)} que sobrou do mês passado foi automaticamente investido, fechando as contas do mês anterior com sucesso.`);
-        } catch (err) {
-          console.error("Erro ao salvar sobra automática:", err);
-        }
-      }
-      
-      // Marca como processado
-      localStorage.setItem(checkKey, 'true');
-    };
-
-    // Usamos um pequeno atraso (3 segundos) para não atrapalhar o carregamento inicial da UI
-    const timerId = setTimeout(() => { processAutomaticSobra(); }, 3000);
-    return () => clearTimeout(timerId);
-  }, [isDataLoaded, transactions, currentUser, firebaseReady]);
-
   useEffect(() => {
     localStorage.setItem('finances_theme', isDarkMode ? 'dark' : 'light');
     if (isDarkMode) document.documentElement.classList.add('dark');
@@ -461,9 +328,6 @@ export default function App() {
       let parsedCats = JSON.parse(localCats);
       const legacyCards = ['Click', 'MP', 'Digio', 'Inter', 'Neon', 'Ponto'];
       parsedCats.expense = [...new Set([...defaultCategories.expense, ...parsedCats.expense.filter(c => !legacyCards.includes(c))])];
-      if(!parsedCats.investment.includes('Sobra de Mês')) {
-          parsedCats.investment.push('Sobra de Mês');
-      }
       setCategories(parsedCats);
     }
     
@@ -520,9 +384,6 @@ export default function App() {
               let parsedCats = data.categories;
               const legacyCards = ['Click', 'MP', 'Digio', 'Inter', 'Neon', 'Ponto'];
               parsedCats.expense = [...new Set([...defaultCategories.expense, ...parsedCats.expense.filter(c => !legacyCards.includes(c))])];
-              if(!parsedCats.investment.includes('Sobra de Mês')) {
-                  parsedCats.investment.push('Sobra de Mês');
-              }
               setCategories(parsedCats); 
               localStorage.setItem(`finances_categories_${userId}`, JSON.stringify(parsedCats)); 
             }
@@ -948,28 +809,8 @@ export default function App() {
     await setDoc(doc(db, 'artifacts', appId, 'public', 'data', `txns_${currentUser.id}`, id), { ...t, status: newStatus }).catch(err => { if (err.code === 'permission-denied') setFirebasePermissionError(true); });
   };
 
-  const prevMonth = () => { 
-    let nextM = currentMonth - 1;
-    let nextY = currentYear;
-    if (nextM < 0) {
-      nextM = 11;
-      nextY = currentYear - 1;
-    }
-    setCurrentMonth(nextM); 
-    setCurrentYear(nextY);
-  };
-
-  const nextMonth = () => { 
-    let nextM = currentMonth + 1;
-    let nextY = currentYear;
-    if (nextM > 11) {
-      nextM = 0;
-      nextY = currentYear + 1;
-    }
-    setCurrentMonth(nextM); 
-    setCurrentYear(nextY);
-  };
-  
+  const prevMonth = () => { if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(currentYear - 1); } else { setCurrentMonth(currentMonth - 1); } };
+  const nextMonth = () => { if (currentMonth === 11) { setCurrentMonth(0); setCurrentYear(currentYear + 1); } else { setCurrentMonth(currentMonth + 1); } };
   const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 
   // ----------------------------------------------------------------------
@@ -977,34 +818,12 @@ export default function App() {
   // ----------------------------------------------------------------------
   const filteredTransactions = useMemo(() => {
     return transactions.filter(t => {
-      const txDateObj = new Date(t.date + 'T12:00:00'); // Ensure middle of day
-      const txMonth = txDateObj.getMonth();
-      const txYear = txDateObj.getFullYear();
-      
-      // Credit card logic: Shift expenses to the next month if after the due date
-      let displayMonth = txMonth;
-      let displayYear = txYear;
-      
-      if (t.type === 'expense' && t.paymentMethod !== 'Dinheiro') {
-        const card = cards.find(c => c.id === t.paymentMethod || c.name === t.paymentMethod);
-        if (card) {
-          // Fechamento da fatura: assume-se aproximadamente 7 dias antes do vencimento
-          const closingDay = card.dueDay - 7 <= 0 ? 1 : card.dueDay - 7;
-          if (txDateObj.getDate() >= closingDay) {
-            displayMonth = txMonth + 1;
-            if (displayMonth > 11) {
-              displayMonth = 0;
-              displayYear = txYear + 1;
-            }
-          }
-        }
-      }
-
-      const isSameMonth = displayYear === currentYear && displayMonth === currentMonth;
+      const [year, month] = t.date.split('-');
+      const isSameMonth = parseInt(year) === currentYear && parseInt(month) === currentMonth + 1;
       const matchesSearch = t.description.toLowerCase().includes(searchTerm.toLowerCase()) || t.category.toLowerCase().includes(searchTerm.toLowerCase());
       return isSameMonth && matchesSearch;
     }).sort((a, b) => new Date(b.date) - new Date(a.date));
-  }, [transactions, currentMonth, currentYear, searchTerm, cards]);
+  }, [transactions, currentMonth, currentYear, searchTerm]);
 
   // Agrupamento para a visão do Extrato (Cartões / Categorias acumuladas)
   const groupedTransactions = useMemo(() => {
