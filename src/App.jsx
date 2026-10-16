@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Plus, ArrowUpCircle, ArrowDownCircle, TrendingUp, Trash2, Edit,
   Wallet, Calendar, ChevronLeft, ChevronRight, PieChart, Lock, LogOut,
@@ -271,6 +271,8 @@ export default function App() {
   const [showConfetti, setShowConfetti] = useState(false);
   const [isPrintMode, setIsPrintMode] = useState(false);
 
+  const [savedCdbId, setSavedCdbId] = useState(null);
+
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const savedTheme = localStorage.getItem('finances_theme');
     return savedTheme ? savedTheme === 'dark' : false;
@@ -280,6 +282,78 @@ export default function App() {
   const showConfirm = (title, message, onConfirm) => setUiModal({ type: 'confirm', title, message, onConfirm, inputValue: '' });
   const showPrompt = (title, message, onConfirm) => setUiModal({ type: 'prompt', title, message, onConfirm, inputValue: '' });
   const closeUiModal = () => setUiModal({ type: null, title: '', message: '', onConfirm: null, inputValue: '' });
+
+  // ----------------------------------------------------------------------
+  // INTERCEPTADOR DO BOTÃO VOLTAR (BACK BUTTON)
+  // ----------------------------------------------------------------------
+  const isAnyModalOpen = showTransactionModal || showFabMenu || showGoalModal || 
+    showBudgetModal || showAiModal || isPlanningGoal || showAiBudgetModal || 
+    showPurchaseModal || showChartModal || showSyncModal || showCalculator || 
+    showCardsModal || showCardForm || showSettingsModal || (uiModal.type !== null);
+
+  const modalStateRef = useRef(isAnyModalOpen);
+
+  // Mantém a referência atualizada
+  useEffect(() => {
+    modalStateRef.current = isAnyModalOpen;
+  }, [isAnyModalOpen]);
+
+  useEffect(() => {
+    let statePushed = false;
+
+    // 1. GATILHO DE INTERAÇÃO: Os navegadores bloqueiam manipulação de histórico se o usuário não tiver interagido com a tela.
+    // Essa função cria a "trava" apenas APÓS o primeiro toque ou clique na tela.
+    const pushSecurityState = () => {
+      if (!statePushed) {
+        window.history.pushState({ locked: true }, '', window.location.href);
+        window.history.pushState({ locked: true }, '', window.location.href);
+        statePushed = true;
+      }
+    };
+
+    window.addEventListener('click', pushSecurityState, { once: true });
+    window.addEventListener('touchstart', pushSecurityState, { once: true });
+
+    const handlePopState = (e) => {
+      // 2. CICLO INFINITO: Sempre que o usuário aperta voltar, nós imediatamente empurramos um novo estado para frente
+      window.history.pushState({ locked: true }, '', window.location.href);
+      
+      if (modalStateRef.current) {
+        // Se houver modais, ele fecha tudo
+        setShowTransactionModal(false);
+        setShowFabMenu(false);
+        setShowGoalModal(false);
+        setShowBudgetModal(false);
+        setShowAiModal(false);
+        setIsPlanningGoal(false);
+        setShowAiBudgetModal(false);
+        setShowPurchaseModal(false);
+        setShowChartModal(false);
+        setShowSyncModal(false);
+        setShowCalculator(false);
+        setShowCardsModal(false);
+        setShowCardForm(false);
+        setShowSettingsModal(false);
+        closeUiModal();
+      }
+    };
+
+    // 3. CAMADA FINAL: O 'beforeunload' garante que se o navegador ignorar o histórico, ele exibe um aviso nativo perguntando se o usuário quer mesmo sair.
+    const handleBeforeUnload = (e) => {
+      e.preventDefault();
+      e.returnValue = ''; // Exibe o alerta padrão do navegador
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('click', pushSecurityState);
+      window.removeEventListener('touchstart', pushSecurityState);
+    };
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('finances_theme', isDarkMode ? 'dark' : 'light');
@@ -739,6 +813,35 @@ export default function App() {
     const safeInstallmentsCount = parseInt(installmentsCount) > 1 ? parseInt(installmentsCount) : 2;
     const finalPaymentMethod = type === 'expense' ? paymentMethod : 'Dinheiro';
 
+    // ---------------------------------------------------------
+    // LÓGICA DE FATURA FECHADA (Pula pro mês seguinte)
+    // ---------------------------------------------------------
+    let finalDate = date;
+    let foiRoladoProximoMes = false;
+
+    if (type === 'expense' && finalPaymentMethod !== 'Dinheiro' && !editingId) {
+      const cardObj = cards.find(c => c.id === finalPaymentMethod);
+      if (cardObj) {
+        let [y, m, d] = date.split('-').map(Number);
+        
+        // Define o fechamento como 7 dias antes do vencimento
+        let closingDay = cardObj.dueDay - 7;
+        
+        // Se der negativo (ex: vence dia 5, 5-7 = -2), calculamos os dias de trás pra frente
+        if (closingDay <= 0) {
+           closingDay = new Date(y, m, 0).getDate() + closingDay; 
+        }
+        
+        if (d >= closingDay) {
+          m += 1;
+          if (m > 12) { m = 1; y += 1; }
+          finalDate = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+          foiRoladoProximoMes = true;
+        }
+      }
+    }
+    // ---------------------------------------------------------
+
     if (editingId) {
       const updatedTxn = { id: editingId, description, amount: numAmount, type, date, category, paymentMethod: finalPaymentMethod, status: itemStatus };
       setTransactions(transactions.map(t => t.id === editingId ? updatedTxn : t));
@@ -747,8 +850,9 @@ export default function App() {
       if ((type === 'expense' || type === 'income') && isInstallment && safeInstallmentsCount > 1) {
         const installmentAmount = installmentType === 'total' ? numAmount / safeInstallmentsCount : numAmount;
         const newTransactions = [];
-        const [year, month, day] = date.split('-');
+        const [year, month, day] = finalDate.split('-'); // Usa a data corrigida
         let startDate = new Date(year, month - 1, day);
+        
         for (let i = 0; i < safeInstallmentsCount; i++) {
           const currentDate = new Date(startDate.getFullYear(), startDate.getMonth() + i, startDate.getDate());
           if (currentDate.getDate() !== parseInt(day)) currentDate.setDate(0); 
@@ -758,7 +862,7 @@ export default function App() {
         setTransactions([...transactions, ...newTransactions]);
         for (let t of newTransactions) await setDoc(doc(db, 'artifacts', appId, 'public', 'data', `txns_${currentUser.id}`, t.id), t).catch(err => { if (err.code === 'permission-denied') setFirebasePermissionError(true); });
       } else {
-        const newTxn = { id: generateSafeId(), description, amount: numAmount, type, date, category, paymentMethod: finalPaymentMethod, status: itemStatus };
+        const newTxn = { id: generateSafeId(), description, amount: numAmount, type, date: finalDate, category, paymentMethod: finalPaymentMethod, status: itemStatus }; // Usa a data corrigida
         setTransactions([...transactions, newTxn]);
         await setDoc(doc(db, 'artifacts', appId, 'public', 'data', `txns_${currentUser.id}`, newTxn.id), newTxn).catch(err => { if (err.code === 'permission-denied') setFirebasePermissionError(true); });
       }
@@ -783,7 +887,16 @@ export default function App() {
         }
       }
     }
-    resetForm(); setShowTransactionModal(false);
+    
+    resetForm(); 
+    setShowTransactionModal(false);
+
+    // Exibe o aviso se a conta pulou de mês
+    if (foiRoladoProximoMes) {
+      setTimeout(() => {
+        showAlert('Fatura Fechada 💳', 'Como o seu cartão já virou, este gasto foi lançado automaticamente no mês seguinte!');
+      }, 300); // 300ms de delay para não atropelar a animação da janela fechando
+    }
   };
 
   const handleEdit = (t) => { 
@@ -909,6 +1022,34 @@ export default function App() {
 
   const expectedBalance = income - expense - investment;
   const budgetPercentage = income > 0 ? Math.min((expense / income) * 100, 100) : (expense > 0 ? 100 : 0);
+
+  const handleSaveToCDB = async () => {
+    if (realBalance <= 0) return;
+    const newTxn = {
+      id: generateSafeId(),
+      description: 'Guarda Rápida CDB',
+      amount: realBalance,
+      type: 'investment',
+      date: new Date(currentYear, currentMonth + 1, 0).toISOString().split('T')[0], // último dia do mês atual
+      category: 'CDB/Tesouro',
+      paymentMethod: 'Dinheiro',
+      status: 'paid'
+    };
+    setTransactions(prev => [...prev, newTxn]);
+    setSavedCdbId(newTxn.id);
+    setShowConfetti(true);
+    setTimeout(() => setShowConfetti(false), 3000);
+    setTimeout(() => setSavedCdbId(null), 10000); // Esconde o botão desfazer após 10s
+    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', `txns_${currentUser.id}`, newTxn.id), newTxn).catch(console.error);
+  };
+
+  const handleUndoCDB = async () => {
+    if (!savedCdbId) return;
+    setTransactions(prev => prev.filter(t => t.id !== savedCdbId));
+    const idToRemove = savedCdbId;
+    setSavedCdbId(null);
+    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', `txns_${currentUser.id}`, idToRemove)).catch(console.error);
+  };
 
   const accumulatedInvestment = useMemo(() => {
     let total = 0;
@@ -1447,6 +1588,19 @@ export default function App() {
                       <span className={`text-3xl sm:text-4xl md:text-5xl font-black mt-4 z-10 tracking-tight break-words whitespace-normal leading-none ${realBalance >= 0 ? (isDarkMode ? 'text-white' : 'text-slate-900') : (isDarkMode ? 'text-rose-400' : 'text-rose-600')}`}>
                         {formatCurrency(realBalance)}
                       </span>
+
+                      {realBalance > 0 && !savedCdbId && (
+                        <button onClick={handleSaveToCDB} className={`mt-3 mb-1 py-1.5 px-3 w-max rounded-lg font-black text-[9px] uppercase tracking-widest transition-all shadow-sm active:scale-95 flex items-center justify-center gap-1.5 z-10 ${isDarkMode ? 'bg-indigo-600 hover:bg-indigo-500 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}>
+                          <Sparkles className="w-3 h-3" /> Economizar Sobra
+                        </button>
+                      )}
+                      
+                      {savedCdbId && (
+                        <button onClick={handleUndoCDB} className={`mt-3 mb-1 py-1.5 px-3 w-max rounded-lg font-black text-[9px] uppercase tracking-widest transition-all shadow-sm active:scale-95 flex items-center justify-center gap-1.5 z-10 ${isDarkMode ? 'bg-rose-900/40 text-rose-400 hover:bg-rose-900/60' : 'bg-rose-100 text-rose-600 hover:bg-rose-200'}`}>
+                          <ArrowLeft className="w-3 h-3" /> Desfazer (10s)
+                        </button>
+                      )}
+
                       <div className={`mt-auto pt-5 border-t text-xs font-black flex justify-between items-center z-10 gap-2 ${isDarkMode ? 'border-[#321759]' : 'border-slate-100'}`}>
                         <span className={`uppercase tracking-wider text-[10px] shrink-0 ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>Previsto</span>
                         <span className={`break-words ${expectedBalance >= 0 ? (isDarkMode ? 'text-purple-200' : 'text-slate-700') : (isDarkMode ? 'text-rose-400' : 'text-rose-600')}`}>{formatCurrency(expectedBalance)}</span>
