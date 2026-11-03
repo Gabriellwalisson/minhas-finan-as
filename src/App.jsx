@@ -302,7 +302,7 @@ export default function App() {
 
   const handleSaveLotEdit = (e) => {
      e.preventDefault();
-     if(!editingLot || !editingLot.qty || !editingLot.price) return;
+     if(!editingLot || editingLot.qty === '' || editingLot.price === '') return;
      const qty = parseFloat(editingLot.qty);
      const price = parseFloat(editingLot.price.toString().replace(',','.'));
      
@@ -313,7 +313,7 @@ export default function App() {
      const totalQty = newLots.reduce((acc, l) => acc + parseFloat(l.qty), 0);
      const totalCost = newLots.reduce((acc, l) => acc + (parseFloat(l.qty) * parseFloat(l.price)), 0);
      
-     const updated = portfolio.map(p => p.ticker === editingLot.ticker ? { ...p, lots: newLots, qty: totalQty, avgPrice: totalCost / totalQty } : p);
+     const updated = portfolio.map(p => p.ticker === editingLot.ticker ? { ...p, lots: newLots, qty: totalQty, avgPrice: totalQty > 0 ? (totalCost / totalQty) : 0 } : p);
      setPortfolio(updated); saveCloudConfig({ portfolio: updated });
      setShowLotEditModal(false);
   };
@@ -712,6 +712,43 @@ export default function App() {
       setIsFetchingSinglePrice(false);
     }
   };
+
+  const fetchPortfolioPrices = async (silent = true) => {
+    if (portfolio.length === 0) return;
+    const token = userSettings.brapiToken || 'cWAVtxA2JWfxREKCV6Rej1';
+    if (!token) {
+      if (!silent) showAlert("Token Ausente", "Por favor, insira o seu token da Brapi nas Configurações (⚙️).");
+      return;
+    }
+    
+    setIsFetchingPrices(true);
+    try {
+      const updatedPortfolio = await Promise.all(portfolio.map(async (item) => {
+         try {
+           const res = await fetch(`https://brapi.dev/api/quote/${item.ticker}?token=${token}`);
+           if (res.ok) {
+              const data = await res.json();
+              if (data.results && data.results.length > 0 && data.results[0].regularMarketPrice) {
+                 return { ...item, currentPrice: data.results[0].regularMarketPrice };
+              }
+           }
+         } catch (err) {}
+         return item;
+      }));
+      setPortfolio(updatedPortfolio);
+      saveCloudConfig({ portfolio: updatedPortfolio });
+    } catch(e) {
+      if (!silent) showAlert("Erro", "Falha ao atualizar cotações. Verifique a sua ligação.");
+    } finally {
+      setIsFetchingPrices(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'dashboard' || activeTab === 'carteira') {
+      fetchPortfolioPrices(true);
+    }
+  }, [activeTab]);
 
   const handleAuth = async (e) => {
     e.preventDefault(); setAuthError('');
@@ -1747,6 +1784,10 @@ export default function App() {
                           <span className={`text-xs font-black uppercase tracking-widest shrink-0 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}>Acumulado</span>
                           <span className={`text-xl lg:text-2xl font-black tracking-tight break-words text-right ${isDarkMode ? 'text-indigo-200' : 'text-indigo-700'}`}>{formatCurrency(accumulatedInvestment)}</span>
                         </div>
+                        <div className={`flex justify-between items-end pt-4 mt-4 border-t gap-2 ${isDarkMode ? 'border-[#321759]' : 'border-indigo-200/50'}`}>
+                          <span className={`text-xs font-black uppercase tracking-widest shrink-0 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}>Carteira B3</span>
+                          <span className={`text-xl lg:text-2xl font-black tracking-tight break-words text-right ${isDarkMode ? 'text-indigo-200' : 'text-indigo-700'}`}>{formatCurrency(portfolio.reduce((acc, curr) => acc + (curr.qty * (curr.currentPrice || curr.avgPrice)), 0))}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1876,42 +1917,7 @@ export default function App() {
                         <div className={`p-2 rounded-xl border shrink-0 ${isDarkMode ? 'bg-emerald-900/30 border-emerald-800/50' : 'bg-emerald-100 border-emerald-200'}`}><Briefcase className={`w-5 h-5 sm:w-6 sm:h-6 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`} /></div>
                         Minha Carteira (B3)
                       </h3>
-                      <button onClick={async () => {
-                        setIsFetchingPrices(true);
-                        try {
-                          const token = userSettings.brapiToken || 'cWAVtxA2JWfxREKCV6Rej1'; // Força a chave padrão
-                          if (!token) {
-                            showAlert("Token Ausente", "Por favor, insira o seu token da Brapi nas Configurações (⚙️) para puxar as cotações. Você pode gerar um gratuito em brapi.dev.");
-                            setIsFetchingPrices(false);
-                            return;
-                          }
-                          if(portfolio.length === 0) { setIsFetchingPrices(false); return; }
-                          
-                          // Busca individual e paralela (blindada contra erros de um único ativo)
-                          const updatedPortfolio = await Promise.all(portfolio.map(async (item) => {
-                             try {
-                               const res = await fetch(`https://brapi.dev/api/quote/${item.ticker}?token=${token}`);
-                               if (res.ok) {
-                                  const data = await res.json();
-                                  if (data.results && data.results.length > 0 && data.results[0].regularMarketPrice) {
-                                     // Cria um novo objeto atualizado para forçar o React a renderizar
-                                     return { ...item, currentPrice: data.results[0].regularMarketPrice };
-                                  }
-                               }
-                             } catch (err) {
-                               console.error("Erro ao buscar ticker", item.ticker, err);
-                             }
-                             return item; // Se der erro, mantém o preço antigo
-                          }));
-                          
-                          setPortfolio(updatedPortfolio);
-                          saveCloudConfig({ portfolio: updatedPortfolio });
-                        } catch(e) {
-                          showAlert("Erro", "Falha ao atualizar cotações. Verifique sua conexão ou token da Brapi.");
-                        } finally {
-                          setIsFetchingPrices(false);
-                        }
-                      }} disabled={isFetchingPrices || portfolio.length === 0} className={`flex items-center gap-2 justify-center text-xs font-black uppercase tracking-widest text-white px-5 py-3 rounded-xl transition-all shadow-md active:scale-95 disabled:opacity-50 ${isDarkMode ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/20' : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20'}`}>
+                      <button onClick={() => fetchPortfolioPrices(false)} disabled={isFetchingPrices || portfolio.length === 0} className={`flex items-center gap-2 justify-center text-xs font-black uppercase tracking-widest text-white px-5 py-3 rounded-xl transition-all shadow-md active:scale-95 disabled:opacity-50 ${isDarkMode ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/20' : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20'}`}>
                         {isFetchingPrices ? <Loader2 className="w-4 h-4 animate-spin"/> : <RefreshCcw className="w-4 h-4" />}
                         Atualizar Cotações
                       </button>
@@ -2083,6 +2089,162 @@ export default function App() {
                         </table>
                       </div>
                     )}
+                  </div>
+                </div>
+              )}
+
+              {/* TAB: ORÇAMENTO (METAS E LIMITES) */}
+              {activeTab === 'metas' && (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    {/* METAS */}
+                    <div className={`rounded-[2rem] p-6 sm:p-8 shadow-sm border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759]' : 'bg-white border-slate-200'}`}>
+                      <div className={`flex justify-between items-center mb-6 pb-5 border-b ${isDarkMode ? 'border-[#321759]' : 'border-slate-200/50'}`}>
+                        <h3 className={`font-black text-xl flex items-center gap-3 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                          <div className={`p-2 rounded-xl border ${isDarkMode ? 'bg-emerald-900/30 border-emerald-800/50' : 'bg-emerald-100 border-emerald-200'}`}><Trophy className={`w-5 h-5 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`} /></div>
+                          Metas
+                        </h3>
+                        <button onClick={openNewGoal} className={`text-white p-2 sm:px-4 sm:py-2.5 rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-colors shadow-md ${isDarkMode ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-slate-900 hover:bg-black'}`}><Plus className="w-4 h-4" /><span className="hidden sm:inline">Nova Meta</span></button>
+                      </div>
+                      <div className="space-y-5">
+                        {goals.length === 0 ? (
+                          <div className="text-center py-10">
+                            <Trophy className={`w-12 h-12 mx-auto mb-3 ${isDarkMode ? 'text-purple-400/40' : 'text-slate-300'}`} />
+                            <p className={`text-sm font-bold ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>Nenhuma meta definida.</p>
+                          </div>
+                        ) : (
+                          goals.map((g) => {
+                            const prog = Math.min((g.current / g.target) * 100, 100);
+                            return (
+                              <div key={g.id} className="relative group">
+                                <div className={`flex justify-between items-end mb-2`}>
+                                  <div className="flex flex-col">
+                                    <span className={`font-black text-sm ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>{g.name}</span>
+                                    <span className={`text-[10px] font-bold uppercase tracking-widest ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>{formatCurrency(g.current)} de {formatCurrency(g.target)}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <button onClick={() => handleGenerateGoalPlan(g)} className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'text-indigo-400 hover:bg-[#2d144d]' : 'text-indigo-600 hover:bg-slate-100'}`} title="Plano IA"><Sparkles className="w-4 h-4" /></button>
+                                    <button onClick={() => openEditGoal(g)} className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'text-amber-400 hover:bg-[#2d144d]' : 'text-amber-600 hover:bg-slate-100'}`}><Edit className="w-4 h-4" /></button>
+                                    <button onClick={() => {
+                                      showConfirm('Excluir Meta', `Tem a certeza que deseja excluir "${g.name}"?`, () => {
+                                        const newGoals = goals.filter(x => x.id !== g.id); setGoals(newGoals); saveCloudConfig({ goals: newGoals });
+                                      });
+                                    }} className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'text-rose-400 hover:bg-[#2d144d]' : 'text-rose-600 hover:bg-slate-100'}`}><Trash2 className="w-4 h-4" /></button>
+                                  </div>
+                                </div>
+                                <div className={`w-full h-3 rounded-full overflow-hidden shadow-inner ${isDarkMode ? 'bg-[#0b0410]' : 'bg-slate-100'}`}>
+                                  <div className={`h-full rounded-full transition-all duration-1000 ${prog >= 100 ? 'bg-emerald-500' : 'bg-indigo-500'}`} style={{ width: `${prog}%` }}></div>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+
+                    {/* ORÇAMENTOS */}
+                    <div className={`rounded-[2rem] p-6 sm:p-8 shadow-sm border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759]' : 'bg-white border-slate-200'}`}>
+                      <div className={`flex justify-between items-center mb-6 pb-5 border-b ${isDarkMode ? 'border-[#321759]' : 'border-slate-200/50'}`}>
+                        <h3 className={`font-black text-xl flex items-center gap-3 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                          <div className={`p-2 rounded-xl border ${isDarkMode ? 'bg-rose-900/30 border-rose-800/50' : 'bg-rose-100 border-rose-200'}`}><Target className={`w-5 h-5 ${isDarkMode ? 'text-rose-400' : 'text-rose-600'}`} /></div>
+                          Limites
+                        </h3>
+                        <div className="flex gap-2">
+                          <button onClick={handleGenerateAiBudget} className={`p-2 sm:px-3 sm:py-2.5 rounded-xl transition-colors shadow-sm flex items-center justify-center border ${isDarkMode ? 'bg-indigo-900/30 border-indigo-800/50 text-indigo-400 hover:bg-indigo-900/50' : 'bg-indigo-50 border-indigo-200 text-indigo-600 hover:bg-indigo-100'}`} title="Gerar com IA"><Sparkles className="w-4 h-4" /></button>
+                          <button onClick={openNewBudget} className={`text-white p-2 sm:px-4 sm:py-2.5 rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-colors shadow-md ${isDarkMode ? 'bg-rose-600 hover:bg-rose-500' : 'bg-slate-900 hover:bg-black'}`}><Plus className="w-4 h-4" /><span className="hidden sm:inline">Novo</span></button>
+                        </div>
+                      </div>
+                      <div className="space-y-5">
+                        {Object.keys(budgets).length === 0 ? (
+                          <div className="text-center py-10">
+                            <Target className={`w-12 h-12 mx-auto mb-3 ${isDarkMode ? 'text-purple-400/40' : 'text-slate-300'}`} />
+                            <p className={`text-sm font-bold ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>Nenhum limite definido.</p>
+                          </div>
+                        ) : (
+                          Object.entries(budgets).map(([cat, limit]) => {
+                            const spent = filteredTransactions.filter(t => t.type === 'expense' && t.category === cat).reduce((s, t) => s + t.amount, 0);
+                            const prog = Math.min((spent / limit) * 100, 100);
+                            return (
+                              <div key={cat} className="relative group">
+                                <div className={`flex justify-between items-end mb-2`}>
+                                  <div className="flex flex-col">
+                                    <span className={`font-black text-sm ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>{cat}</span>
+                                    <span className={`text-[10px] font-bold uppercase tracking-widest ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>{formatCurrency(spent)} de {formatCurrency(limit)}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <button onClick={() => openEditBudget(cat, limit)} className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'text-amber-400 hover:bg-[#2d144d]' : 'text-amber-600 hover:bg-slate-100'}`}><Edit className="w-4 h-4" /></button>
+                                    <button onClick={() => handleDeleteBudget(cat)} className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'text-rose-400 hover:bg-[#2d144d]' : 'text-rose-600 hover:bg-slate-100'}`}><Trash2 className="w-4 h-4" /></button>
+                                  </div>
+                                </div>
+                                <div className={`w-full h-3 rounded-full overflow-hidden shadow-inner ${isDarkMode ? 'bg-[#0b0410]' : 'bg-slate-100'}`}>
+                                  <div className={`h-full rounded-full transition-all duration-1000 ${prog >= 100 ? 'bg-rose-500' : prog >= 80 ? 'bg-amber-400' : 'bg-emerald-500'}`} style={{ width: `${prog}%` }}></div>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB: SIMULADOR (EVOLUÇÃO) */}
+              {activeTab === 'simulador' && (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+                  <div className={`rounded-[2rem] p-6 sm:p-8 shadow-sm border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759]' : 'bg-white border-slate-200'}`}>
+                    <div className={`flex justify-between items-center mb-6 pb-5 border-b ${isDarkMode ? 'border-[#321759]' : 'border-slate-200/50'}`}>
+                      <h3 className={`font-black text-xl flex items-center gap-3 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                        <div className={`p-2 rounded-xl border ${isDarkMode ? 'bg-indigo-900/30 border-indigo-800/50' : 'bg-indigo-100 border-indigo-200'}`}><TrendingUp className={`w-5 h-5 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} /></div>
+                        Simulador de Juros Compostos
+                      </h3>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                      <div className="space-y-6">
+                        <div>
+                          <div className="flex justify-between mb-2">
+                            <label className={formStyles.label(isDarkMode) + " !mb-0"}>Valor Inicial</label>
+                            <span className={`font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{formatCurrency(simInitial)}</span>
+                          </div>
+                          <input type="range" min="0" max="50000" step="100" value={simInitial} onChange={(e) => setSimInitial(Number(e.target.value))} className="w-full accent-indigo-600" />
+                        </div>
+                        
+                        <div>
+                          <div className="flex justify-between mb-2">
+                            <label className={formStyles.label(isDarkMode) + " !mb-0 flex items-center gap-2"}>Aporte Mensal <button onClick={() => setSimMonthly(expectedBalance > 0 ? expectedBalance : 0)} className={`text-[9px] px-2 py-0.5 rounded border ${isDarkMode ? 'bg-indigo-900/40 border-indigo-700/50 text-indigo-300 hover:bg-indigo-800' : 'bg-indigo-50 border-indigo-200 text-indigo-600 hover:bg-indigo-100'}`}>Usar Sobra</button></label>
+                            <span className={`font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{formatCurrency(simMonthly)}</span>
+                          </div>
+                          <input type="range" min="0" max="10000" step="50" value={simMonthly} onChange={(e) => setSimMonthly(Number(e.target.value))} className="w-full accent-indigo-600" />
+                        </div>
+
+                        <div>
+                          <div className="flex justify-between mb-2">
+                            <label className={formStyles.label(isDarkMode) + " !mb-0"}>Taxa de Juros Mensal</label>
+                            <span className={`font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{simRate.toFixed(2)}%</span>
+                          </div>
+                          <input type="range" min="0" max="3" step="0.05" value={simRate} onChange={(e) => setSimRate(Number(e.target.value))} className="w-full accent-indigo-600" />
+                        </div>
+
+                        <div>
+                          <div className="flex justify-between mb-2">
+                            <label className={formStyles.label(isDarkMode) + " !mb-0"}>Período (Anos)</label>
+                            <span className={`font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{simYears} Anos</span>
+                          </div>
+                          <input type="range" min="1" max="35" step="1" value={simYears} onChange={(e) => setSimYears(Number(e.target.value))} className="w-full accent-indigo-600" />
+                        </div>
+                      </div>
+
+                      <div className={`p-6 sm:p-8 rounded-3xl flex flex-col justify-center items-center text-center shadow-inner border ${isDarkMode ? 'bg-indigo-900/10 border-indigo-900/30' : 'bg-indigo-50 border-indigo-100'}`}>
+                        <span className={`text-[10px] font-black uppercase tracking-widest mb-4 px-3 py-1 rounded-full border ${isDarkMode ? 'bg-[#1a0b2e] border-indigo-500/50 text-indigo-300' : 'bg-white border-indigo-200 text-indigo-600'}`}>Projeção Final</span>
+                        <h4 className={`text-4xl sm:text-5xl lg:text-6xl font-black tracking-tighter mb-4 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                          {formatCurrency(simFutureValue)}
+                        </h4>
+                        <p className={`text-sm font-bold max-w-[250px] ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>
+                          O poder dos juros compostos trabalhando para si ao longo de {simYears} anos.
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
