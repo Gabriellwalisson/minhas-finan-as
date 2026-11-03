@@ -7,7 +7,7 @@ import {
   Search, FileSpreadsheet, CheckCircle, Circle, AlertCircle, CreditCard,
   Settings2, Printer, Settings, ChevronDown, Info, Sun, Moon, 
   Target, Trophy, Lightbulb, LayoutDashboard, ListOrdered, ArrowLeft,
-  Wand2, ShoppingBag
+  Wand2, ShoppingBag, Briefcase, RefreshCcw
 } from 'lucide-react';
 
 // Importações do Firebase para Nuvem (Sincronização entre dispositivos)
@@ -264,7 +264,7 @@ export default function App() {
   const [editingCardId, setEditingCardId] = useState(null);
   const [cardForm, setCardForm] = useState({ name: '', limit: '', dueDay: '5', color: 'bg-indigo-500' });
   const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [userSettings, setUserSettings] = useState({ geminiApiKey: '', displayName: '' });
+  const [userSettings, setUserSettings] = useState({ geminiApiKey: '', brapiToken: '', displayName: '' });
   
   const [uiModal, setUiModal] = useState({ type: null, title: '', message: '', onConfirm: null, inputValue: '' });
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
@@ -272,6 +272,10 @@ export default function App() {
   const [isPrintMode, setIsPrintMode] = useState(false);
 
   const [savedCdbId, setSavedCdbId] = useState(null);
+  const [portfolio, setPortfolio] = useState([]);
+  const [isFetchingPrices, setIsFetchingPrices] = useState(false);
+  const [isFetchingSinglePrice, setIsFetchingSinglePrice] = useState(false);
+  const [newAsset, setNewAsset] = useState({ ticker: '', qty: '', avgPrice: '' });
 
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const savedTheme = localStorage.getItem('finances_theme');
@@ -361,6 +365,35 @@ export default function App() {
     else document.documentElement.classList.remove('dark');
   }, [isDarkMode]);
 
+  // ----------------------------------------------------------------------
+  // AUTO-BUSCA DE COTAÇÃO (CARTEIRA)
+  // ----------------------------------------------------------------------
+  useEffect(() => {
+    // Só dispara se tiver 4+ letras (ex: PETR4, BOVA11) e o preço ainda estiver vazio
+    if (!newAsset.ticker || newAsset.ticker.length < 4 || newAsset.avgPrice) return;
+    
+    const timer = setTimeout(() => {
+      const token = userSettings.brapiToken || '';
+      if (!token) return; // Se não tiver token, aborta silenciosamente para não dar erro
+      
+      setIsFetchingSinglePrice(true);
+      fetch(`https://brapi.dev/api/quote/${newAsset.ticker.toUpperCase()}?token=${token}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.results && data.results.length > 0) {
+            const price = data.results[0].regularMarketPrice;
+            if (price) {
+              setNewAsset(prev => ({ ...prev, avgPrice: price.toString() }));
+            }
+          }
+        })
+        .catch(() => {}) // Ignora erros no modo automático (o usuário ainda pode clicar em Buscar)
+        .finally(() => setIsFetchingSinglePrice(false));
+    }, 800); // Aguarda 800ms após parar de digitar
+    
+    return () => clearTimeout(timer);
+  }, [newAsset.ticker, newAsset.avgPrice, userSettings.brapiToken]);
+
   useEffect(() => {
     const initAuth = async () => {
       try {
@@ -395,6 +428,8 @@ export default function App() {
     if (localBudgets) setBudgets(JSON.parse(localBudgets));
     const localFreq = localStorage.getItem(`finances_frequent_${userId}`);
     if (localFreq) setFrequentItems(JSON.parse(localFreq));
+    const localPortfolio = localStorage.getItem(`finances_portfolio_${userId}`);
+    if (localPortfolio) setPortfolio(JSON.parse(localPortfolio));
     
     // Filtro Automático para Limpar nomes de Cartões antigos que ficaram na cache
     const localCats = localStorage.getItem(`finances_categories_${userId}`);
@@ -465,9 +500,10 @@ export default function App() {
             if (data.goals) { setGoals(data.goals); localStorage.setItem(`finances_goals_${userId}`, JSON.stringify(data.goals)); }
             if (data.budgets) { setBudgets(data.budgets); localStorage.setItem(`finances_budgets_${userId}`, JSON.stringify(data.budgets)); }
             if (data.frequentItems) { setFrequentItems(data.frequentItems); localStorage.setItem(`finances_frequent_${userId}`, JSON.stringify(data.frequentItems)); }
+            if (data.portfolio) { setPortfolio(data.portfolio); localStorage.setItem(`finances_portfolio_${userId}`, JSON.stringify(data.portfolio)); }
             if (data.userSettings) setUserSettings(data.userSettings);
           } else if (!localCats) {
-            setCategories(defaultCategories); setCards(defaultCards); setGoals([]); setBudgets({});
+            setCategories(defaultCategories); setCards(defaultCards); setGoals([]); setBudgets({}); setPortfolio([]);
           }
         },
         (err) => { if (err.code === 'permission-denied') setFirebasePermissionError(true); }
@@ -606,6 +642,33 @@ export default function App() {
     try { setPurchaseAdvice(await fetchWithRetry(prompt)); } 
     catch (error) { setPurchaseAdvice('Falha ao contactar consultor IA. Verifique a API Key.'); } 
     finally { setIsAdvisingPurchase(false); }
+  };
+
+  const handleFetchSinglePrice = async () => {
+    if (!newAsset.ticker) return;
+    setIsFetchingSinglePrice(true);
+    try {
+      const token = userSettings.brapiToken || '';
+      if (!token) {
+        showAlert("Token Ausente", "Por favor, insira o seu token da Brapi nas Configurações (⚙️) para buscar cotações.");
+        setIsFetchingSinglePrice(false);
+        return;
+      }
+      const res = await fetch(`https://brapi.dev/api/quote/${newAsset.ticker}?token=${token}`);
+      const data = await res.json();
+      if (data.results && data.results.length > 0) {
+        const price = data.results[0].regularMarketPrice;
+        if (price) {
+           setNewAsset(prev => ({ ...prev, avgPrice: price.toString() }));
+        }
+      } else {
+         showAlert("Ativo não encontrado", "Verifique o código do Ticker e tente novamente.");
+      }
+    } catch(e) {
+      showAlert("Erro", "Falha ao buscar cotação. Verifique sua conexão e o Token da Brapi.");
+    } finally {
+      setIsFetchingSinglePrice(false);
+    }
   };
 
   const handleAuth = async (e) => {
@@ -1552,6 +1615,7 @@ export default function App() {
             <button onClick={() => setActiveTab('dashboard')} className={`flex-1 min-w-[100px] py-3 px-4 text-xs font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 ${activeTab === 'dashboard' ? 'bg-indigo-600 text-white shadow-md' : (isDarkMode ? 'text-purple-300/70 hover:bg-[#2d144d]' : 'text-slate-500 hover:bg-slate-50')}`}><LayoutDashboard className="w-4 h-4" /> Resumo</button>
             <button onClick={() => setActiveTab('extrato')} className={`flex-1 min-w-[100px] py-3 px-4 text-xs font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 ${activeTab === 'extrato' ? 'bg-indigo-600 text-white shadow-md' : (isDarkMode ? 'text-purple-300/70 hover:bg-[#2d144d]' : 'text-slate-500 hover:bg-slate-50')}`}><ListOrdered className="w-4 h-4" /> Extrato</button>
             <button onClick={() => setActiveTab('metas')} className={`flex-1 min-w-[100px] py-3 px-4 text-xs font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 ${activeTab === 'metas' ? 'bg-indigo-600 text-white shadow-md' : (isDarkMode ? 'text-purple-300/70 hover:bg-[#2d144d]' : 'text-slate-500 hover:bg-slate-50')}`}><Target className="w-4 h-4" /> Orçamento</button>
+            <button onClick={() => setActiveTab('carteira')} className={`flex-1 min-w-[100px] py-3 px-4 text-xs font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 ${activeTab === 'carteira' ? 'bg-indigo-600 text-white shadow-md' : (isDarkMode ? 'text-purple-300/70 hover:bg-[#2d144d]' : 'text-slate-500 hover:bg-slate-50')}`}><Briefcase className="w-4 h-4" /> Carteira</button>
             <button onClick={() => setActiveTab('simulador')} className={`flex-1 min-w-[100px] py-3 px-4 text-xs font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 ${activeTab === 'simulador' ? 'bg-indigo-600 text-white shadow-md' : (isDarkMode ? 'text-purple-300/70 hover:bg-[#2d144d]' : 'text-slate-500 hover:bg-slate-50')}`}><TrendingUp className="w-4 h-4" /> Evolução</button>
           </div>
         </div>
@@ -1760,184 +1824,157 @@ export default function App() {
                 </div>
               )}
 
-              {/* TAB: METAS E ORÇAMENTOS */}
-              {activeTab === 'metas' && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 animate-in fade-in slide-in-from-bottom-4">
-                  
-                  {/* ORÇAMENTOS */}
+              {/* TAB: CARTEIRA */}
+              {activeTab === 'carteira' && (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
                   <div className={`rounded-[2rem] p-6 sm:p-8 shadow-sm border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759]' : 'bg-white border-slate-200'}`}>
                     <div className={`flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 pb-5 gap-4 border-b ${isDarkMode ? 'border-[#321759]' : 'border-slate-200/50'}`}>
                       <h3 className={`font-black text-xl sm:text-2xl flex items-center gap-3 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                        <div className={`p-2 rounded-xl border shrink-0 ${isDarkMode ? 'bg-rose-900/30 border-rose-800/50' : 'bg-rose-100 border-rose-200'}`}><Target className={`w-5 h-5 sm:w-6 sm:h-6 ${isDarkMode ? 'text-rose-400' : 'text-rose-600'}`} /></div>
-                        Orçamentos
+                        <div className={`p-2 rounded-xl border shrink-0 ${isDarkMode ? 'bg-emerald-900/30 border-emerald-800/50' : 'bg-emerald-100 border-emerald-200'}`}><Briefcase className={`w-5 h-5 sm:w-6 sm:h-6 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`} /></div>
+                        Minha Carteira (B3)
                       </h3>
-                      <div className="flex gap-2 w-full sm:w-auto">
-                        <button onClick={handleGenerateAiBudget} className={`flex-1 sm:flex-none justify-center text-[10px] font-black uppercase tracking-widest px-3 py-2.5 sm:py-2 rounded-xl transition-colors shadow-sm flex items-center gap-1 border ${isDarkMode ? 'bg-indigo-900/30 border-indigo-800/50 text-indigo-300 hover:bg-indigo-900/50' : 'bg-indigo-50 border-indigo-200 text-indigo-600 hover:bg-indigo-100'}`}>
-                          <Sparkles className="w-3.5 h-3.5"/> ✨ <span className="hidden sm:inline">Orçamento</span> IA
-                        </button>
-                        <button onClick={openNewBudget} className="flex-1 sm:flex-none justify-center text-xs font-black uppercase tracking-widest text-white bg-rose-600 px-4 py-2.5 sm:py-2 rounded-xl hover:bg-rose-700 transition-colors shadow-md shadow-rose-600/20">
-                          + Criar
-                        </button>
-                      </div>
-                    </div>
-                    
-                    {Object.keys(budgets).filter(c => budgets[c] > 0).length === 0 ? (
-                      <div className="text-center py-12">
-                        <Target className={`w-16 h-16 mx-auto mb-4 ${isDarkMode ? 'text-purple-400/40' : 'text-slate-300'}`} />
-                        <p className={`text-base font-bold ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>Nenhum orçamento definido.</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-6">
-                        {Object.keys(budgets).filter(cat => budgets[cat] > 0).map(cat => {
-                          const catSpent = filteredTransactions.filter(t => t.type === 'expense' && t.category === cat).reduce((s, t) => s + t.amount, 0);
-                          const catLimit = budgets[cat];
-                          const catPercentage = Math.min((catSpent / catLimit) * 100, 100);
-                          const isOver = catSpent > catLimit;
-
-                          return (
-                            <div key={cat} className={`space-y-3 p-5 rounded-2xl group relative shadow-sm border ${isDarkMode ? 'bg-[#0b0410]/50 border-[#321759]' : 'bg-slate-50 border-slate-200'}`}>
-                              <div className="flex justify-between items-center">
-                                <span className={`font-black text-lg ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>{cat}</span>
-                                <div className="flex items-center gap-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <button onClick={() => openEditBudget(cat, catLimit)} className={`p-1.5 rounded-lg shadow-sm border transition-colors ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759] text-purple-300/70 hover:text-amber-400' : 'bg-white border-slate-200 text-slate-400 hover:text-amber-600'}`}><Edit className="w-3.5 h-3.5" /></button>
-                                  <button onClick={() => handleDeleteBudget(cat)} className={`p-1.5 rounded-lg shadow-sm border transition-colors ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759] text-purple-300/70 hover:text-rose-400' : 'bg-white border-slate-200 text-slate-400 hover:text-rose-600'}`}><Trash2 className="w-3.5 h-3.5" /></button>
-                                </div>
-                              </div>
-                              <div>
-                                <div className="flex justify-between items-end mb-2 gap-2">
-                                  <span className={`text-sm font-black break-words ${isOver ? (isDarkMode ? 'text-rose-400' : 'text-rose-600') : (isDarkMode ? 'text-purple-200' : 'text-slate-600')}`}>{formatCurrency(catSpent)} <span className={`font-bold ${isDarkMode ? 'text-purple-300/70' : 'text-slate-400'}`}>/ {formatCurrency(catLimit)}</span></span>
-                                  <span className={`text-xs font-black shrink-0 ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>{catPercentage.toFixed(0)}%</span>
-                                </div>
-                                <div className={`w-full h-2.5 rounded-full overflow-hidden shadow-inner border ${isDarkMode ? 'bg-[#321759] border-[#321759]' : 'bg-slate-200 border-slate-200/50'}`}>
-                                  <div className={`h-full transition-all duration-500 rounded-full ${isOver ? 'bg-rose-500' : catPercentage > 80 ? 'bg-amber-400' : 'bg-emerald-500'}`} style={{ width: `${catPercentage}%` }}></div>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* METAS */}
-                  <div className={`rounded-[2rem] p-6 sm:p-8 shadow-sm border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759]' : 'bg-white border-slate-200'}`}>
-                    <div className={`flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 pb-5 gap-4 border-b ${isDarkMode ? 'border-[#321759]' : 'border-slate-200/50'}`}>
-                      <h3 className={`font-black text-xl sm:text-2xl flex items-center gap-3 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                        <div className={`p-2 rounded-xl border shrink-0 ${isDarkMode ? 'bg-emerald-900/30 border-emerald-800/50' : 'bg-emerald-100 border-emerald-200'}`}><Trophy className={`w-5 h-5 sm:w-6 sm:h-6 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`} /></div>
-                        Metas & Sonhos
-                      </h3>
-                      <button onClick={openNewGoal} className="w-full sm:w-auto text-xs font-black uppercase tracking-widest text-white bg-emerald-600 px-4 py-2.5 sm:py-2 rounded-xl hover:bg-emerald-700 transition-colors shadow-md shadow-emerald-600/20">
-                        + Criar
+                      <button onClick={async () => {
+                        setIsFetchingPrices(true);
+                        try {
+                          const token = userSettings.brapiToken || '';
+                          if (!token) {
+                            showAlert("Token Ausente", "Por favor, insira o seu token da Brapi nas Configurações (⚙️) para puxar as cotações. Você pode gerar um gratuito em brapi.dev.");
+                            setIsFetchingPrices(false);
+                            return;
+                          }
+                          const tickers = portfolio.map(p => p.ticker).join('%2C');
+                          if(!tickers) { setIsFetchingPrices(false); return; }
+                          const res = await fetch(`https://brapi.dev/api/quote/${tickers}?token=${token}`);
+                          const data = await res.json();
+                          if (data.results) {
+                            const updatedPortfolio = portfolio.map(item => {
+                              const result = data.results.find(r => r.symbol.toUpperCase() === item.ticker.toUpperCase());
+                              if (result && result.regularMarketPrice) return { ...item, currentPrice: result.regularMarketPrice };
+                              return item;
+                            });
+                            setPortfolio(updatedPortfolio);
+                            saveCloudConfig({ portfolio: updatedPortfolio });
+                          }
+                        } catch(e) {
+                          showAlert("Erro", "Falha ao atualizar cotações. Verifique sua conexão ou token da Brapi.");
+                        } finally {
+                          setIsFetchingPrices(false);
+                        }
+                      }} disabled={isFetchingPrices || portfolio.length === 0} className={`flex items-center gap-2 justify-center text-xs font-black uppercase tracking-widest text-white px-5 py-3 rounded-xl transition-all shadow-md active:scale-95 disabled:opacity-50 ${isDarkMode ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/20' : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20'}`}>
+                        {isFetchingPrices ? <Loader2 className="w-4 h-4 animate-spin"/> : <RefreshCcw className="w-4 h-4" />}
+                        Atualizar Cotações
                       </button>
                     </div>
-                    
-                    {goals.length === 0 ? (
-                      <div className="text-center py-12">
-                        <Trophy className={`w-16 h-16 mx-auto mb-4 ${isDarkMode ? 'text-purple-400/40' : 'text-slate-300'}`} />
-                        <p className={`text-base font-bold ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>Nenhuma meta criada. Comece a poupar hoje!</p>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+                      <div className={`p-5 rounded-2xl border ${isDarkMode ? 'bg-[#0b0410]/50 border-[#321759]' : 'bg-slate-50 border-slate-200'}`}>
+                        <span className={`text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>Custo Total</span>
+                        <p className={`text-2xl font-black mt-1 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{formatCurrency(portfolio.reduce((acc, curr) => acc + (curr.qty * curr.avgPrice), 0))}</p>
+                      </div>
+                      <div className={`p-5 rounded-2xl border ${isDarkMode ? 'bg-[#0b0410]/50 border-[#321759]' : 'bg-slate-50 border-slate-200'}`}>
+                        <span className={`text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>Saldo Atual</span>
+                        <p className={`text-2xl font-black mt-1 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{formatCurrency(portfolio.reduce((acc, curr) => acc + (curr.qty * (curr.currentPrice || curr.avgPrice)), 0))}</p>
+                      </div>
+                      <div className={`p-5 rounded-2xl border ${isDarkMode ? 'bg-[#0b0410]/50 border-[#321759]' : 'bg-slate-50 border-slate-200'}`}>
+                        <span className={`text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>Lucro / Prejuízo</span>
+                        <p className={`text-2xl font-black mt-1 ${(portfolio.reduce((acc, curr) => acc + (curr.qty * (curr.currentPrice || curr.avgPrice)), 0) - portfolio.reduce((acc, curr) => acc + (curr.qty * curr.avgPrice), 0)) >= 0 ? (isDarkMode ? 'text-emerald-400' : 'text-emerald-600') : (isDarkMode ? 'text-rose-400' : 'text-rose-600')}`}>
+                          {formatCurrency(portfolio.reduce((acc, curr) => acc + (curr.qty * (curr.currentPrice || curr.avgPrice)), 0) - portfolio.reduce((acc, curr) => acc + (curr.qty * curr.avgPrice), 0))}
+                        </p>
+                      </div>
+                    </div>
+
+                    <form onSubmit={(e) => {
+                      e.preventDefault();
+                      if (!newAsset.ticker || !newAsset.qty || !newAsset.avgPrice) return;
+                      const ticker = newAsset.ticker.toUpperCase();
+                      const qty = parseFloat(newAsset.qty);
+                      const avgPrice = parseFloat(newAsset.avgPrice.replace(',', '.'));
+                      const existing = portfolio.find(p => p.ticker === ticker);
+                      let updated;
+                      if (existing) {
+                        const totalQty = existing.qty + qty;
+                        const totalCost = (existing.qty * existing.avgPrice) + (qty * avgPrice);
+                        updated = portfolio.map(p => p.ticker === ticker ? { ...p, qty: totalQty, avgPrice: totalCost / totalQty } : p);
+                      } else {
+                        updated = [...portfolio, { ticker, qty, avgPrice, currentPrice: avgPrice }];
+                      }
+                      setPortfolio(updated); saveCloudConfig({ portfolio: updated });
+                      setNewAsset({ ticker: '', qty: '', avgPrice: '' });
+                    }} className={`p-5 sm:p-6 rounded-2xl shadow-sm border mb-8 ${isDarkMode ? 'bg-[#0b0410] border-[#321759]' : 'bg-slate-100 border-slate-200/50'}`}>
+                      <h4 className={`text-xs font-black uppercase tracking-widest mb-4 ${isDarkMode ? 'text-purple-300/70' : 'text-slate-600'}`}>Adicionar Ativo</h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
+                        <div>
+                          <label className={formStyles.label(isDarkMode) + " flex justify-between items-center"}>
+                            <span>Ticker (Ex: PETR4)</span>
+                            <button type="button" onClick={handleFetchSinglePrice} disabled={isFetchingSinglePrice || !newAsset.ticker} className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded transition-colors border ${!newAsset.ticker ? 'opacity-50 cursor-not-allowed' : ''} ${isDarkMode ? 'bg-indigo-900/30 border-indigo-800/50 text-indigo-400 hover:bg-indigo-900/50' : 'bg-indigo-50 border-indigo-200 text-indigo-600 hover:bg-indigo-100'}`} title="Buscar cotação atual">
+                              {isFetchingSinglePrice ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />} Buscar
+                            </button>
+                          </label>
+                          <input type="text" required value={newAsset.ticker} onChange={e => setNewAsset({...newAsset, ticker: e.target.value})} className={formStyles.input(isDarkMode)} />
+                        </div>
+                        <div>
+                          <label className={formStyles.label(isDarkMode)}>Quantidade</label>
+                          <input type="number" step="0.01" required value={newAsset.qty} onChange={e => setNewAsset({...newAsset, qty: e.target.value})} className={formStyles.input(isDarkMode)} />
+                        </div>
+                        <div>
+                          <label className={formStyles.label(isDarkMode)}>Preço Médio (R$)</label>
+                          <input type="number" step="0.01" required value={newAsset.avgPrice} onChange={e => setNewAsset({...newAsset, avgPrice: e.target.value})} className={formStyles.input(isDarkMode)} />
+                        </div>
+                        <button type="submit" className={`w-full py-4 text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-md transition-all active:scale-95 ${isDarkMode ? 'bg-indigo-600 hover:bg-indigo-500' : 'bg-slate-900 hover:bg-black'}`}>Adicionar</button>
+                      </div>
+                    </form>
+
+                    {portfolio.length === 0 ? (
+                      <div className="text-center py-10">
+                        <Briefcase className={`w-16 h-16 mx-auto mb-4 ${isDarkMode ? 'text-purple-400/40' : 'text-slate-300'}`} />
+                        <p className={`text-base font-bold ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>Nenhum ativo cadastrado na carteira.</p>
                       </div>
                     ) : (
-                      <div className="space-y-6">
-                        {goals.map(goal => {
-                          const percentage = Math.min((goal.current / goal.target) * 100, 100);
-                          const isComplete = goal.current >= goal.target;
-                          
-                          return (
-                            <div key={goal.id} className={`p-6 rounded-2xl relative group shadow-sm border ${isDarkMode ? 'bg-[#0b0410]/50 border-[#321759]' : 'bg-slate-50 border-slate-200'}`}>
-                              <div className="absolute top-4 right-4 flex gap-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={() => openEditGoal(goal)} className={`p-2 rounded-lg shadow-sm border transition-colors ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759] text-purple-300/70 hover:text-amber-400' : 'bg-white border-slate-200 text-slate-400 hover:text-amber-600'}`}><Edit className="w-4 h-4"/></button>
-                                <button onClick={() => {
-                                  showConfirm('Excluir', `Deseja excluir a meta "${goal.name}"?`, () => {
-                                    const newGoals = goals.filter(g => g.id !== goal.id);
-                                    setGoals(newGoals); saveCloudConfig({ goals: newGoals });
-                                  });
-                                }} className={`p-2 rounded-lg shadow-sm border transition-colors ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759] text-purple-300/70 hover:text-rose-400' : 'bg-white border-slate-200 text-slate-400 hover:text-rose-600'}`}><Trash2 className="w-4 h-4"/></button>
-                              </div>
-                              
-                              <h4 className={`font-black text-lg mb-2 flex items-center gap-2 mr-16 sm:mr-0 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                                {goal.name} {isComplete && '🎉'}
-                                {!isComplete && (
-                                  <button onClick={() => handleGenerateGoalPlan(goal)} disabled={isPlanningGoal} className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-md transition-colors flex items-center gap-1 border ${isDarkMode ? 'bg-indigo-900/50 border-indigo-800/50 text-indigo-300 hover:bg-indigo-800' : 'bg-indigo-100 border-transparent text-indigo-600 hover:bg-indigo-200'}`}>
-                                    {isPlanningGoal && selectedGoalForPlan?.id === goal.id ? <Loader2 className="w-3 h-3 animate-spin"/> : <Sparkles className="w-3 h-3" />} IA
-                                  </button>
-                                )}
-                              </h4>
-                              <div className="flex justify-between items-end mb-3 gap-2">
-                                <span className={`text-sm font-black break-words ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>{formatCurrency(goal.current)} <span className={`font-bold ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>de {formatCurrency(goal.target)}</span></span>
-                                <span className={`text-xs font-black shrink-0 ${isDarkMode ? 'text-purple-300/70' : 'text-slate-600'}`}>{percentage.toFixed(1)}%</span>
-                              </div>
-                              <div className={`w-full h-3 rounded-full overflow-hidden mb-5 shadow-inner border ${isDarkMode ? 'bg-[#321759] border-[#321759]' : 'bg-slate-200 border-slate-200/50'}`}>
-                                <div className="h-full bg-emerald-500 transition-all duration-1000 rounded-full" style={{ width: `${percentage}%` }}></div>
-                              </div>
-                              {!isComplete && (
-                                <button onClick={() => {
-                                  showPrompt('Adicionar Valor', `Quanto deseja guardar para "${goal.name}" agora?`, (val) => {
-                                    if (!val) return;
-                                    const num = parseFloat(val.toString().replace(',', '.'));
-                                    if (!isNaN(num) && num > 0) {
-                                      const newGoals = goals.map(g => g.id === goal.id ? { ...g, current: g.current + num } : g);
-                                      setGoals(newGoals); saveCloudConfig({ goals: newGoals });
-                                    }
-                                  });
-                                }} className={`w-full py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-colors shadow-sm border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759] text-purple-200 hover:text-emerald-400 hover:border-emerald-800/50' : 'bg-white border-slate-300 text-slate-700 hover:text-emerald-600 hover:border-emerald-300'}`}>
-                                  + Adicionar Valor
-                                </button>
-                              )}
-                            </div>
-                          );
-                        })}
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm whitespace-nowrap">
+                          <thead>
+                            <tr className={`border-b ${isDarkMode ? 'border-[#321759] text-purple-300/70' : 'border-slate-200 text-slate-500'}`}>
+                              <th className="pb-3 font-black uppercase tracking-widest text-[10px]">Ativo</th>
+                              <th className="pb-3 font-black uppercase tracking-widest text-[10px]">Qtd</th>
+                              <th className="pb-3 font-black uppercase tracking-widest text-[10px]">Preço Médio</th>
+                              <th className="pb-3 font-black uppercase tracking-widest text-[10px]">Cotação Atual</th>
+                              <th className="pb-3 font-black uppercase tracking-widest text-[10px]">Total (R$)</th>
+                              <th className="pb-3 font-black uppercase tracking-widest text-[10px]">Lucro / Prejuízo</th>
+                              <th className="pb-3 font-black uppercase tracking-widest text-[10px] text-right">Ação</th>
+                            </tr>
+                          </thead>
+                          <tbody className={`divide-y ${isDarkMode ? 'divide-[#321759]' : 'divide-slate-100'}`}>
+                            {portfolio.map(p => {
+                              const currentP = p.currentPrice || p.avgPrice;
+                              const totalCost = p.qty * p.avgPrice;
+                              const totalCurrent = p.qty * currentP;
+                              const pl = totalCurrent - totalCost;
+                              const plPerc = (pl / totalCost) * 100;
+                              return (
+                                <tr key={p.ticker} className={`transition-colors ${isDarkMode ? 'hover:bg-[#2d144d]/30' : 'hover:bg-slate-50'}`}>
+                                  <td className={`py-4 font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{p.ticker}</td>
+                                  <td className={`py-4 font-bold ${isDarkMode ? 'text-purple-200' : 'text-slate-700'}`}>{p.qty}</td>
+                                  <td className={`py-4 font-bold ${isDarkMode ? 'text-purple-200' : 'text-slate-700'}`}>{formatCurrency(p.avgPrice)}</td>
+                                  <td className={`py-4 font-bold ${isDarkMode ? 'text-purple-200' : 'text-slate-700'}`}>{formatCurrency(currentP)}</td>
+                                  <td className={`py-4 font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{formatCurrency(totalCurrent)}</td>
+                                  <td className={`py-4 font-black ${pl >= 0 ? (isDarkMode ? 'text-emerald-400' : 'text-emerald-600') : (isDarkMode ? 'text-rose-400' : 'text-rose-600')}`}>
+                                    {pl >= 0 ? '+' : ''}{formatCurrency(pl)} ({plPerc.toFixed(2)}%)
+                                  </td>
+                                  <td className="py-4 text-right">
+                                    <button onClick={() => {
+                                      showConfirm('Remover Ativo', `Deseja remover ${p.ticker} da sua carteira?`, () => {
+                                        const newPort = portfolio.filter(item => item.ticker !== p.ticker);
+                                        setPortfolio(newPort); saveCloudConfig({ portfolio: newPort });
+                                      });
+                                    }} className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'text-rose-400 hover:bg-rose-900/30' : 'text-rose-500 hover:bg-rose-50'}`}><Trash2 className="w-4 h-4"/></button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
                       </div>
                     )}
-                  </div>
-                </div>
-              )}
-
-              {/* TAB: SIMULADOR */}
-              {activeTab === 'simulador' && (
-                <div className={`rounded-[2rem] p-6 sm:p-8 md:p-10 animate-in fade-in slide-in-from-bottom-4 shadow-sm border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759]' : 'bg-white border-slate-200'}`}>
-                  <h3 className={`font-black text-xl sm:text-2xl flex items-center gap-3 mb-8 sm:mb-10 pb-5 border-b ${isDarkMode ? 'text-white border-[#321759]' : 'text-slate-900 border-slate-200/50'}`}>
-                    <div className={`p-2 rounded-xl border shrink-0 ${isDarkMode ? 'bg-indigo-900/30 border-indigo-800/50' : 'bg-indigo-100 border-indigo-200'}`}><TrendingUp className={`w-5 h-5 sm:w-6 sm:h-6 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} /></div>
-                    Simulador de Investimentos
-                  </h3>
-
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
-                    <div className="space-y-8">
-                      <div>
-                        <label className={`block text-xs font-black uppercase tracking-widest mb-3 flex justify-between ${isDarkMode ? 'text-purple-300/70' : 'text-slate-600'}`}>Valor Inicial <span className={isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}>{formatCurrency(simInitial)}</span></label>
-                        <input type="range" min="0" max="50000" step="500" value={simInitial} onChange={(e) => setSimInitial(Number(e.target.value))} className={`w-full h-2 rounded-lg appearance-none cursor-pointer ${isDarkMode ? 'accent-indigo-500 bg-[#2d144d]' : 'accent-indigo-600 bg-slate-200'}`} />
-                      </div>
-                      <div>
-                        <label className={`block text-xs font-black uppercase tracking-widest mb-3 flex justify-between ${isDarkMode ? 'text-purple-300/70' : 'text-slate-600'}`}>Aporte Mensal <span className={isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}>{formatCurrency(simMonthly)}</span></label>
-                        <input type="range" min="0" max="10000" step="100" value={simMonthly} onChange={(e) => setSimMonthly(Number(e.target.value))} className={`w-full h-2 rounded-lg appearance-none cursor-pointer ${isDarkMode ? 'accent-indigo-500 bg-[#2d144d]' : 'accent-indigo-600 bg-slate-200'}`} />
-                      </div>
-                      <div>
-                        <label className={`block text-xs font-black uppercase tracking-widest mb-3 flex justify-between ${isDarkMode ? 'text-purple-300/70' : 'text-slate-600'}`}>Taxa Mensal (%) <span className={isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}>{simRate.toFixed(2)}%</span></label>
-                        <input type="range" min="0.1" max="2.0" step="0.1" value={simRate} onChange={(e) => setSimRate(Number(e.target.value))} className={`w-full h-2 rounded-lg appearance-none cursor-pointer ${isDarkMode ? 'accent-indigo-500 bg-[#2d144d]' : 'accent-indigo-600 bg-slate-200'}`} />
-                        <p className={`text-xs font-bold mt-2 p-2 rounded-lg border ${isDarkMode ? 'text-purple-300/70 bg-[#0b0410]/50 border-[#321759]' : 'text-slate-500 bg-slate-50 border-slate-200/50'}`}>Ex: Poupança ~0.5%, Tesouro/CDB ~0.8%, FIIs ~1.0%</p>
-                      </div>
-                      <div>
-                        <label className={`block text-xs font-black uppercase tracking-widest mb-3 flex justify-between ${isDarkMode ? 'text-purple-300/70' : 'text-slate-600'}`}>Tempo <span className={isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}>{simYears} {simYears === 1 ? 'Ano' : 'Anos'}</span></label>
-                        <input type="range" min="1" max="30" step="1" value={simYears} onChange={(e) => setSimYears(Number(e.target.value))} className={`w-full h-2 rounded-lg appearance-none cursor-pointer ${isDarkMode ? 'accent-indigo-500 bg-[#2d144d]' : 'accent-indigo-600 bg-slate-200'}`} />
-                      </div>
-                    </div>
-
-                    <div className="bg-slate-900 dark:bg-[#050108] rounded-[2rem] p-6 sm:p-10 flex flex-col justify-center items-center text-center relative overflow-hidden shadow-xl border border-slate-800 dark:border-[#1a0b2e] mt-6 lg:mt-0">
-                      <div className="absolute inset-0 bg-grid-pattern opacity-20 mask-radial"></div>
-                      <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/10 to-purple-500/10 pointer-events-none"></div>
-                      <h4 className="text-indigo-300 font-black uppercase tracking-widest text-[10px] sm:text-xs mb-3 relative z-10">Valor Final Estimado</h4>
-                      <p className="text-4xl sm:text-5xl md:text-6xl font-black text-white tracking-tight relative z-10 mb-6 sm:mb-8 drop-shadow-lg break-words px-2 w-full leading-none">{formatCurrency(simFutureValue)}</p>
-                      
-                      <div className="w-full bg-slate-800/80 dark:bg-[#160a22]/80 backdrop-blur-md rounded-2xl p-4 sm:p-5 grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 relative z-10 border border-slate-700 dark:border-[#321759]">
-                        <div>
-                          <p className="text-slate-400 text-[9px] sm:text-[10px] uppercase font-black tracking-widest mb-1 sm:mb-2">Total Investido</p>
-                          <p className="text-white font-black text-base sm:text-lg break-words">{formatCurrency(simInitial + (simMonthly * simYears * 12))}</p>
-                        </div>
-                        <div>
-                          <p className="text-emerald-400 text-[9px] sm:text-[10px] uppercase font-black tracking-widest mb-1 sm:mb-2">Juros Ganhos</p>
-                          <p className="text-emerald-400 font-black text-base sm:text-lg break-words">+{formatCurrency(simFutureValue - (simInitial + (simMonthly * simYears * 12)))}</p>
-                        </div>
-                      </div>
-                    </div>
                   </div>
                 </div>
               )}
@@ -2283,6 +2320,11 @@ export default function App() {
               <label className={`block text-[10px] font-black uppercase tracking-widest mb-3 flex items-center gap-1.5 mt-1 ${isDarkMode ? 'text-indigo-300' : 'text-indigo-700'}`}><Sparkles className="w-4 h-4"/> IA Gemini API Key</label>
               <p className={`text-xs font-medium mb-4 leading-relaxed ${isDarkMode ? 'text-purple-300/70' : 'text-slate-600'}`}>Insira a sua chave privada do <strong>Google AI Studio</strong>.</p>
               <input type="password" value={userSettings.geminiApiKey} onChange={e => setUserSettings({...userSettings, geminiApiKey: e.target.value})} placeholder="Colar a API Key aqui..." className={formStyles.input(isDarkMode) + " font-mono text-xs"} />
+            </div>
+            <div className={`p-5 shadow-sm rounded-2xl relative overflow-hidden border ${isDarkMode ? 'bg-emerald-900/20 border-emerald-800/50' : 'bg-emerald-50 border-emerald-200/50'}`}>
+              <label className={`block text-[10px] font-black uppercase tracking-widest mb-3 flex items-center gap-1.5 mt-1 ${isDarkMode ? 'text-emerald-300' : 'text-emerald-700'}`}><Briefcase className="w-4 h-4"/> Brapi Token (B3)</label>
+              <p className={`text-xs font-medium mb-4 leading-relaxed ${isDarkMode ? 'text-purple-300/70' : 'text-slate-600'}`}>Para cotações em tempo real. Obtenha em <strong>brapi.dev</strong>.</p>
+              <input type="password" value={userSettings.brapiToken || ''} onChange={e => setUserSettings({...userSettings, brapiToken: e.target.value})} placeholder="Colar Token Brapi aqui..." className={formStyles.input(isDarkMode) + " font-mono text-xs"} />
             </div>
             <button onClick={handleSaveSettings} className={`w-full py-4 text-white font-black text-sm uppercase tracking-widest rounded-2xl shadow-xl transition-all active:scale-95 mt-4 ${isDarkMode ? 'bg-indigo-600 hover:bg-indigo-500' : 'bg-slate-900 hover:bg-black'}`}>Guardar Alterações</button>
             <div className={`pt-6 mt-6 border-t ${isDarkMode ? 'border-rose-900/50' : 'border-rose-200/50'}`}>
