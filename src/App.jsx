@@ -264,7 +264,7 @@ export default function App() {
   const [editingCardId, setEditingCardId] = useState(null);
   const [cardForm, setCardForm] = useState({ name: '', limit: '', dueDay: '5', color: 'bg-indigo-500' });
   const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [userSettings, setUserSettings] = useState({ geminiApiKey: '', brapiToken: '', displayName: '' });
+  const [userSettings, setUserSettings] = useState({ geminiApiKey: '', brapiToken: 'cWAVtxA2JWfxREKCV6Rej1', displayName: '' });
   
   const [uiModal, setUiModal] = useState({ type: null, title: '', message: '', onConfirm: null, inputValue: '' });
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
@@ -373,7 +373,7 @@ export default function App() {
     if (!newAsset.ticker || newAsset.ticker.length < 4 || newAsset.avgPrice) return;
     
     const timer = setTimeout(() => {
-      const token = userSettings.brapiToken || '';
+      const token = userSettings.brapiToken || 'cWAVtxA2JWfxREKCV6Rej1'; // Força a chave padrão
       if (!token) return; // Se não tiver token, aborta silenciosamente para não dar erro
       
       setIsFetchingSinglePrice(true);
@@ -445,6 +445,7 @@ export default function App() {
 
     setUserSettings({
       geminiApiKey: localStorage.getItem(`finances_gemini_key_${userId}`) || '',
+      brapiToken: localStorage.getItem(`finances_brapi_token_${userId}`) || 'cWAVtxA2JWfxREKCV6Rej1',
       displayName: currentUser.name || ''
     });
 
@@ -501,7 +502,7 @@ export default function App() {
             if (data.budgets) { setBudgets(data.budgets); localStorage.setItem(`finances_budgets_${userId}`, JSON.stringify(data.budgets)); }
             if (data.frequentItems) { setFrequentItems(data.frequentItems); localStorage.setItem(`finances_frequent_${userId}`, JSON.stringify(data.frequentItems)); }
             if (data.portfolio) { setPortfolio(data.portfolio); localStorage.setItem(`finances_portfolio_${userId}`, JSON.stringify(data.portfolio)); }
-            if (data.userSettings) setUserSettings(data.userSettings);
+            if (data.userSettings) setUserSettings({ ...data.userSettings, brapiToken: data.userSettings.brapiToken || 'cWAVtxA2JWfxREKCV6Rej1' });
           } else if (!localCats) {
             setCategories(defaultCategories); setCards(defaultCards); setGoals([]); setBudgets({}); setPortfolio([]);
           }
@@ -648,7 +649,7 @@ export default function App() {
     if (!newAsset.ticker) return;
     setIsFetchingSinglePrice(true);
     try {
-      const token = userSettings.brapiToken || '';
+      const token = userSettings.brapiToken || 'cWAVtxA2JWfxREKCV6Rej1'; // Força a chave padrão
       if (!token) {
         showAlert("Token Ausente", "Por favor, insira o seu token da Brapi nas Configurações (⚙️) para buscar cotações.");
         setIsFetchingSinglePrice(false);
@@ -727,6 +728,7 @@ export default function App() {
   const handleSaveSettings = () => {
     if (currentUser) {
       localStorage.setItem(`finances_gemini_key_${currentUser.id}`, userSettings.geminiApiKey);
+      localStorage.setItem(`finances_brapi_token_${currentUser.id}`, userSettings.brapiToken || 'cWAVtxA2JWfxREKCV6Rej1');
       const updatedUser = { ...currentUser, name: userSettings.displayName };
       const userRef = doc(db, 'artifacts', appId, 'public', 'data', 'app_users', currentUser.id);
       setDoc(userRef, updatedUser, { merge: true }).catch(err => { if (err.code === 'permission-denied') setFirebasePermissionError(true); });
@@ -1836,7 +1838,7 @@ export default function App() {
                       <button onClick={async () => {
                         setIsFetchingPrices(true);
                         try {
-                          const token = userSettings.brapiToken || '';
+                          const token = userSettings.brapiToken || 'cWAVtxA2JWfxREKCV6Rej1'; // Força a chave padrão
                           if (!token) {
                             showAlert("Token Ausente", "Por favor, insira o seu token da Brapi nas Configurações (⚙️) para puxar as cotações. Você pode gerar um gratuito em brapi.dev.");
                             setIsFetchingPrices(false);
@@ -1886,6 +1888,10 @@ export default function App() {
                     <form onSubmit={(e) => {
                       e.preventDefault();
                       if (!newAsset.ticker || !newAsset.qty || !newAsset.avgPrice) return;
+                      if (newAsset.ticker.length < 5) {
+                        showAlert("Aviso", "O código do ativo (Ticker) deve ter entre 5 e 6 caracteres (Ex: PETR4, BOVA11).");
+                        return;
+                      }
                       const ticker = newAsset.ticker.toUpperCase();
                       const qty = parseFloat(newAsset.qty);
                       const avgPrice = parseFloat(newAsset.avgPrice.replace(',', '.'));
@@ -1910,7 +1916,17 @@ export default function App() {
                               {isFetchingSinglePrice ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />} Buscar
                             </button>
                           </label>
-                          <input type="text" required value={newAsset.ticker} onChange={e => setNewAsset({...newAsset, ticker: e.target.value})} className={formStyles.input(isDarkMode)} />
+                          <input 
+                            type="text" 
+                            required 
+                            maxLength={6}
+                            value={newAsset.ticker} 
+                            onChange={e => {
+                              const val = e.target.value.toUpperCase();
+                              setNewAsset(prev => ({ ...prev, ticker: val, avgPrice: val === '' ? '' : prev.avgPrice }));
+                            }} 
+                            className={formStyles.input(isDarkMode)} 
+                          />
                         </div>
                         <div>
                           <label className={formStyles.label(isDarkMode)}>Quantidade</label>
