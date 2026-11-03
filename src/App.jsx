@@ -277,6 +277,47 @@ export default function App() {
   const [isFetchingSinglePrice, setIsFetchingSinglePrice] = useState(false);
   const [newAsset, setNewAsset] = useState({ ticker: '', qty: '', avgPrice: '' });
 
+  const [expandedPortfolio, setExpandedPortfolio] = useState({});
+  const [editingLot, setEditingLot] = useState(null);
+  const [showLotEditModal, setShowLotEditModal] = useState(false);
+  
+  const togglePortfolio = (ticker) => setExpandedPortfolio(prev => ({ ...prev, [ticker]: !prev[ticker] }));
+
+  const handleDeleteLot = (ticker, lotId) => {
+    showConfirm('Remover Aporte', 'Deseja remover este aporte?', () => {
+      const asset = portfolio.find(p => p.ticker === ticker);
+      if (!asset || !asset.lots) return;
+      const newLots = asset.lots.filter(l => l.id !== lotId);
+      let updated;
+      if (newLots.length === 0) {
+        updated = portfolio.filter(p => p.ticker !== ticker);
+      } else {
+        const totalQty = newLots.reduce((acc, l) => acc + parseFloat(l.qty), 0);
+        const totalCost = newLots.reduce((acc, l) => acc + (parseFloat(l.qty) * parseFloat(l.price)), 0);
+        updated = portfolio.map(p => p.ticker === ticker ? { ...p, lots: newLots, qty: totalQty, avgPrice: totalCost / totalQty } : p);
+      }
+      setPortfolio(updated); saveCloudConfig({ portfolio: updated });
+    });
+  };
+
+  const handleSaveLotEdit = (e) => {
+     e.preventDefault();
+     if(!editingLot || !editingLot.qty || !editingLot.price) return;
+     const qty = parseFloat(editingLot.qty);
+     const price = parseFloat(editingLot.price.toString().replace(',','.'));
+     
+     const asset = portfolio.find(p => p.ticker === editingLot.ticker);
+     if(!asset || !asset.lots) return;
+     
+     const newLots = asset.lots.map(l => l.id === editingLot.lotId ? { ...l, qty, price, date: editingLot.date } : l);
+     const totalQty = newLots.reduce((acc, l) => acc + parseFloat(l.qty), 0);
+     const totalCost = newLots.reduce((acc, l) => acc + (parseFloat(l.qty) * parseFloat(l.price)), 0);
+     
+     const updated = portfolio.map(p => p.ticker === editingLot.ticker ? { ...p, lots: newLots, qty: totalQty, avgPrice: totalCost / totalQty } : p);
+     setPortfolio(updated); saveCloudConfig({ portfolio: updated });
+     setShowLotEditModal(false);
+  };
+
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const savedTheme = localStorage.getItem('finances_theme');
     return savedTheme ? savedTheme === 'dark' : false;
@@ -1844,19 +1885,27 @@ export default function App() {
                             setIsFetchingPrices(false);
                             return;
                           }
-                          const tickers = portfolio.map(p => p.ticker).join('%2C');
-                          if(!tickers) { setIsFetchingPrices(false); return; }
-                          const res = await fetch(`https://brapi.dev/api/quote/${tickers}?token=${token}`);
-                          const data = await res.json();
-                          if (data.results) {
-                            const updatedPortfolio = portfolio.map(item => {
-                              const result = data.results.find(r => r.symbol.toUpperCase() === item.ticker.toUpperCase());
-                              if (result && result.regularMarketPrice) return { ...item, currentPrice: result.regularMarketPrice };
-                              return item;
-                            });
-                            setPortfolio(updatedPortfolio);
-                            saveCloudConfig({ portfolio: updatedPortfolio });
-                          }
+                          if(portfolio.length === 0) { setIsFetchingPrices(false); return; }
+                          
+                          // Busca individual e paralela (blindada contra erros de um único ativo)
+                          const updatedPortfolio = await Promise.all(portfolio.map(async (item) => {
+                             try {
+                               const res = await fetch(`https://brapi.dev/api/quote/${item.ticker}?token=${token}`);
+                               if (res.ok) {
+                                  const data = await res.json();
+                                  if (data.results && data.results.length > 0 && data.results[0].regularMarketPrice) {
+                                     // Cria um novo objeto atualizado para forçar o React a renderizar
+                                     return { ...item, currentPrice: data.results[0].regularMarketPrice };
+                                  }
+                               }
+                             } catch (err) {
+                               console.error("Erro ao buscar ticker", item.ticker, err);
+                             }
+                             return item; // Se der erro, mantém o preço antigo
+                          }));
+                          
+                          setPortfolio(updatedPortfolio);
+                          saveCloudConfig({ portfolio: updatedPortfolio });
                         } catch(e) {
                           showAlert("Erro", "Falha ao atualizar cotações. Verifique sua conexão ou token da Brapi.");
                         } finally {
@@ -1871,7 +1920,7 @@ export default function App() {
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
                       <div className={`p-5 rounded-2xl border ${isDarkMode ? 'bg-[#0b0410]/50 border-[#321759]' : 'bg-slate-50 border-slate-200'}`}>
                         <span className={`text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>Custo Total</span>
-                        <p className={`text-2xl font-black mt-1 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{formatCurrency(portfolio.reduce((acc, curr) => acc + (curr.qty * curr.avgPrice), 0))}</p>
+                        <p className={`text-2xl font-black mt-1 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{formatCurrency(portfolio.reduce((acc, curr) => acc + (curr.lots ? curr.lots.reduce((s, l) => s + (l.qty * l.price), 0) : (curr.qty * curr.avgPrice)), 0))}</p>
                       </div>
                       <div className={`p-5 rounded-2xl border ${isDarkMode ? 'bg-[#0b0410]/50 border-[#321759]' : 'bg-slate-50 border-slate-200'}`}>
                         <span className={`text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>Saldo Atual</span>
@@ -1879,8 +1928,8 @@ export default function App() {
                       </div>
                       <div className={`p-5 rounded-2xl border ${isDarkMode ? 'bg-[#0b0410]/50 border-[#321759]' : 'bg-slate-50 border-slate-200'}`}>
                         <span className={`text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-purple-300/70' : 'text-slate-500'}`}>Lucro / Prejuízo</span>
-                        <p className={`text-2xl font-black mt-1 ${(portfolio.reduce((acc, curr) => acc + (curr.qty * (curr.currentPrice || curr.avgPrice)), 0) - portfolio.reduce((acc, curr) => acc + (curr.qty * curr.avgPrice), 0)) >= 0 ? (isDarkMode ? 'text-emerald-400' : 'text-emerald-600') : (isDarkMode ? 'text-rose-400' : 'text-rose-600')}`}>
-                          {formatCurrency(portfolio.reduce((acc, curr) => acc + (curr.qty * (curr.currentPrice || curr.avgPrice)), 0) - portfolio.reduce((acc, curr) => acc + (curr.qty * curr.avgPrice), 0))}
+                        <p className={`text-2xl font-black mt-1 ${(portfolio.reduce((acc, curr) => acc + (curr.qty * (curr.currentPrice || curr.avgPrice)), 0) - portfolio.reduce((acc, curr) => acc + (curr.lots ? curr.lots.reduce((s, l) => s + (l.qty * l.price), 0) : (curr.qty * curr.avgPrice)), 0)) >= 0 ? (isDarkMode ? 'text-emerald-400' : 'text-emerald-600') : (isDarkMode ? 'text-rose-400' : 'text-rose-600')}`}>
+                          {formatCurrency(portfolio.reduce((acc, curr) => acc + (curr.qty * (curr.currentPrice || curr.avgPrice)), 0) - portfolio.reduce((acc, curr) => acc + (curr.lots ? curr.lots.reduce((s, l) => s + (l.qty * l.price), 0) : (curr.qty * curr.avgPrice)), 0))}
                         </p>
                       </div>
                     </div>
@@ -1895,14 +1944,19 @@ export default function App() {
                       const ticker = newAsset.ticker.toUpperCase();
                       const qty = parseFloat(newAsset.qty);
                       const avgPrice = parseFloat(newAsset.avgPrice.replace(',', '.'));
+                      const newLot = { id: generateSafeId(), date: new Date().toISOString().split('T')[0], qty, price: avgPrice };
+                      
                       const existing = portfolio.find(p => p.ticker === ticker);
                       let updated;
                       if (existing) {
-                        const totalQty = existing.qty + qty;
-                        const totalCost = (existing.qty * existing.avgPrice) + (qty * avgPrice);
-                        updated = portfolio.map(p => p.ticker === ticker ? { ...p, qty: totalQty, avgPrice: totalCost / totalQty } : p);
+                        const currentLots = existing.lots || [{ id: generateSafeId(), date: 'Anterior', qty: existing.qty, price: existing.avgPrice }];
+                        const updatedLots = [...currentLots, newLot];
+                        
+                        const totalQty = updatedLots.reduce((acc, l) => acc + parseFloat(l.qty), 0);
+                        const totalCost = updatedLots.reduce((acc, l) => acc + (parseFloat(l.qty) * parseFloat(l.price)), 0);
+                        updated = portfolio.map(p => p.ticker === ticker ? { ...p, lots: updatedLots, qty: totalQty, avgPrice: totalCost / totalQty } : p);
                       } else {
-                        updated = [...portfolio, { ticker, qty, avgPrice, currentPrice: avgPrice }];
+                        updated = [...portfolio, { ticker, qty, avgPrice, currentPrice: avgPrice, lots: [newLot] }];
                       }
                       setPortfolio(updated); saveCloudConfig({ portfolio: updated });
                       setNewAsset({ ticker: '', qty: '', avgPrice: '' });
@@ -1954,7 +2008,8 @@ export default function App() {
                               <th className="pb-3 font-black uppercase tracking-widest text-[10px]">Qtd</th>
                               <th className="pb-3 font-black uppercase tracking-widest text-[10px]">Preço Médio</th>
                               <th className="pb-3 font-black uppercase tracking-widest text-[10px]">Cotação Atual</th>
-                              <th className="pb-3 font-black uppercase tracking-widest text-[10px]">Total (R$)</th>
+                              <th className="pb-3 font-black uppercase tracking-widest text-[10px]">Custo Total</th>
+                              <th className="pb-3 font-black uppercase tracking-widest text-[10px]">Saldo Atual</th>
                               <th className="pb-3 font-black uppercase tracking-widest text-[10px]">Lucro / Prejuízo</th>
                               <th className="pb-3 font-black uppercase tracking-widest text-[10px] text-right">Ação</th>
                             </tr>
@@ -1962,29 +2017,66 @@ export default function App() {
                           <tbody className={`divide-y ${isDarkMode ? 'divide-[#321759]' : 'divide-slate-100'}`}>
                             {portfolio.map(p => {
                               const currentP = p.currentPrice || p.avgPrice;
-                              const totalCost = p.qty * p.avgPrice;
+                              const assetLots = p.lots || [{ id: 'legacy', date: 'Anterior', qty: p.qty, price: p.avgPrice }];
+                              const totalCost = assetLots.reduce((sum, l) => sum + (l.qty * l.price), 0);
                               const totalCurrent = p.qty * currentP;
                               const pl = totalCurrent - totalCost;
-                              const plPerc = (pl / totalCost) * 100;
+                              const plPerc = totalCost > 0 ? (pl / totalCost) * 100 : 0;
+                              const isExp = expandedPortfolio[p.ticker];
+                              
                               return (
-                                <tr key={p.ticker} className={`transition-colors ${isDarkMode ? 'hover:bg-[#2d144d]/30' : 'hover:bg-slate-50'}`}>
-                                  <td className={`py-4 font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{p.ticker}</td>
-                                  <td className={`py-4 font-bold ${isDarkMode ? 'text-purple-200' : 'text-slate-700'}`}>{p.qty}</td>
-                                  <td className={`py-4 font-bold ${isDarkMode ? 'text-purple-200' : 'text-slate-700'}`}>{formatCurrency(p.avgPrice)}</td>
-                                  <td className={`py-4 font-bold ${isDarkMode ? 'text-purple-200' : 'text-slate-700'}`}>{formatCurrency(currentP)}</td>
-                                  <td className={`py-4 font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{formatCurrency(totalCurrent)}</td>
-                                  <td className={`py-4 font-black ${pl >= 0 ? (isDarkMode ? 'text-emerald-400' : 'text-emerald-600') : (isDarkMode ? 'text-rose-400' : 'text-rose-600')}`}>
-                                    {pl >= 0 ? '+' : ''}{formatCurrency(pl)} ({plPerc.toFixed(2)}%)
-                                  </td>
-                                  <td className="py-4 text-right">
-                                    <button onClick={() => {
-                                      showConfirm('Remover Ativo', `Deseja remover ${p.ticker} da sua carteira?`, () => {
-                                        const newPort = portfolio.filter(item => item.ticker !== p.ticker);
-                                        setPortfolio(newPort); saveCloudConfig({ portfolio: newPort });
-                                      });
-                                    }} className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'text-rose-400 hover:bg-rose-900/30' : 'text-rose-500 hover:bg-rose-50'}`}><Trash2 className="w-4 h-4"/></button>
-                                  </td>
-                                </tr>
+                                <React.Fragment key={p.ticker}>
+                                  <tr onClick={() => togglePortfolio(p.ticker)} className={`transition-colors cursor-pointer ${isDarkMode ? 'hover:bg-[#2d144d]/50' : 'hover:bg-slate-50'}`}>
+                                    <td className={`py-4 px-2 font-black flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                                      <ChevronDown className={`w-4 h-4 transition-transform ${isExp ? 'rotate-180 text-indigo-500' : 'text-slate-400'}`} />
+                                      {p.ticker}
+                                    </td>
+                                    <td className={`py-4 font-bold ${isDarkMode ? 'text-purple-200' : 'text-slate-700'}`}>{p.qty}</td>
+                                    <td className={`py-4 font-bold ${isDarkMode ? 'text-purple-200' : 'text-slate-700'}`}>{formatCurrency(p.avgPrice)}</td>
+                                    <td className={`py-4 font-bold ${isDarkMode ? 'text-purple-200' : 'text-slate-700'}`}>{formatCurrency(currentP)}</td>
+                                    <td className={`py-4 font-bold ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{formatCurrency(totalCost)}</td>
+                                    <td className={`py-4 font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{formatCurrency(totalCurrent)}</td>
+                                    <td className={`py-4 font-black ${pl >= 0 ? (isDarkMode ? 'text-emerald-400' : 'text-emerald-600') : (isDarkMode ? 'text-rose-400' : 'text-rose-600')}`}>
+                                      {pl >= 0 ? '+' : ''}{formatCurrency(pl)} ({plPerc.toFixed(2)}%)
+                                    </td>
+                                    <td className="py-4 text-right pr-2">
+                                      <button onClick={(e) => {
+                                        e.stopPropagation();
+                                        showConfirm('Remover Ativo', `Deseja remover ${p.ticker} da sua carteira? Isto apagará todo o histórico.`, () => {
+                                          const newPort = portfolio.filter(item => item.ticker !== p.ticker);
+                                          setPortfolio(newPort); saveCloudConfig({ portfolio: newPort });
+                                        });
+                                      }} className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'text-rose-400 hover:bg-rose-900/30' : 'text-rose-500 hover:bg-rose-50'}`}><Trash2 className="w-4 h-4"/></button>
+                                    </td>
+                                  </tr>
+                                  {isExp && (
+                                    <tr className={isDarkMode ? 'bg-[#1a0b2e]/50' : 'bg-slate-50/50'}>
+                                      <td colSpan="8" className="p-0 border-b-0">
+                                        <div className={`p-4 mx-2 mb-4 mt-2 rounded-2xl border ${isDarkMode ? 'bg-[#0b0410] border-[#321759]' : 'bg-white border-slate-200'}`}>
+                                          <h5 className={`text-[10px] font-black uppercase tracking-widest mb-3 ${isDarkMode ? 'text-purple-400' : 'text-indigo-600'}`}>Histórico de Aportes ({p.ticker})</h5>
+                                          <ul className="space-y-2">
+                                            {assetLots.map(lot => (
+                                              <li key={lot.id} className={`flex justify-between items-center p-3 rounded-xl border ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759]' : 'bg-slate-50 border-slate-200/50'}`}>
+                                                <div className="flex flex-col sm:flex-row sm:gap-6 gap-1">
+                                                  <span className={`text-xs font-bold ${isDarkMode ? 'text-purple-300' : 'text-slate-600'}`}><span className="opacity-50 mr-1">Data:</span>{lot.date.includes('-') ? lot.date.split('-').reverse().join('/') : lot.date}</span>
+                                                  <span className={`text-xs font-bold ${isDarkMode ? 'text-purple-300' : 'text-slate-600'}`}><span className="opacity-50 mr-1">Qtd:</span>{lot.qty}</span>
+                                                  <span className={`text-xs font-bold ${isDarkMode ? 'text-purple-300' : 'text-slate-600'}`}><span className="opacity-50 mr-1">Preço:</span>{formatCurrency(lot.price)}</span>
+                                                </div>
+                                                <div className="flex gap-2">
+                                                  <button onClick={() => {
+                                                    setEditingLot({ ticker: p.ticker, lotId: lot.id, date: lot.date, qty: lot.qty, price: lot.price });
+                                                    setShowLotEditModal(true);
+                                                  }} className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'text-indigo-400 hover:bg-indigo-900/30' : 'text-indigo-600 hover:bg-indigo-50'}`}><Edit className="w-3.5 h-3.5"/></button>
+                                                  <button onClick={() => handleDeleteLot(p.ticker, lot.id)} className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'text-rose-400 hover:bg-rose-900/30' : 'text-rose-500 hover:bg-rose-50'}`}><Trash2 className="w-3.5 h-3.5"/></button>
+                                                </div>
+                                              </li>
+                                            ))}
+                                          </ul>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  )}
+                                </React.Fragment>
                               );
                             })}
                           </tbody>
@@ -2475,6 +2567,32 @@ export default function App() {
               </button>
             ))}
           </div>
+        </BaseModal>
+
+        {/* MODAL: EDITAR LOTE DE AÇÕES */}
+        <BaseModal isOpen={showLotEditModal} onClose={() => setShowLotEditModal(false)} title="Editar Aporte" icon={Edit} iconBg={isDarkMode ? 'bg-amber-900/40' : 'bg-amber-100'} iconColor={isDarkMode ? 'text-amber-400' : 'text-amber-600'} isDarkMode={isDarkMode}>
+          {editingLot && (
+            <form onSubmit={handleSaveLotEdit} className="space-y-5">
+              <div className={`p-4 rounded-xl border mb-2 ${isDarkMode ? 'bg-[#1a0b2e] border-[#321759]' : 'bg-slate-50 border-slate-200'}`}>
+                <p className={`text-xs font-black uppercase tracking-widest text-center ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>Ativo: {editingLot.ticker}</p>
+              </div>
+              <div>
+                <label className={formStyles.label(isDarkMode)}>Data da Compra</label>
+                <input type="date" required value={editingLot.date} onChange={e => setEditingLot({...editingLot, date: e.target.value})} className={formStyles.input(isDarkMode)} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={formStyles.label(isDarkMode)}>Quantidade</label>
+                  <input type="number" step="0.01" required value={editingLot.qty} onChange={e => setEditingLot({...editingLot, qty: e.target.value})} className={formStyles.input(isDarkMode)} />
+                </div>
+                <div>
+                  <label className={formStyles.label(isDarkMode)}>Preço (R$)</label>
+                  <input type="number" step="0.01" required value={editingLot.price} onChange={e => setEditingLot({...editingLot, price: e.target.value})} className={formStyles.input(isDarkMode)} />
+                </div>
+              </div>
+              <button type="submit" className={`w-full py-4 text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl transition-all active:scale-95 ${isDarkMode ? 'bg-amber-600 hover:bg-amber-500' : 'bg-amber-500 hover:bg-amber-600'}`}>Salvar Alterações</button>
+            </form>
+          )}
         </BaseModal>
 
         {/* MODAL UNIVERSAL PARA CONFIRMAÇÕES E PROMPTS */}
